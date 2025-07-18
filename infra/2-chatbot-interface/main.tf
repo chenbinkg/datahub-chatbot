@@ -1,0 +1,12 @@
+locals {
+  tags = {
+    creation_method  = "terraform"
+    Authors       = var.authors
+    ServiceOwner = var.service_owner
+    ServiceCategory = var.service_category
+    Project = var.project_id
+    ProjectName = var.project_name
+    Environment = var.environment
+  }
+}
+

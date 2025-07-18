@@ -1,0 +1,25 @@
+**/.vs/*
+**/*.pem
+**/*.private
+**/*.zip
+**/*.ppk
+*.code-workspace
+git-commit-ref.txt
+.terraform/
+.terraform*
+*.tfplan
+*.tfstate*
+tf_output*
+*id_rsa*
+**/__pycache__/
+**/venv/
+**.pytest_cache
+# **.vscode/
+**/auth_env_vars
+
+error.txt
+success.txt
+sync_logs.txt
+plan.txt
+**/report.xml
+infrastructure/2-seafloor-data/*.py
