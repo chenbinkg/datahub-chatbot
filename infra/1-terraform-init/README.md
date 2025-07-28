@@ -9,7 +9,7 @@ The files in this directory set up Terraform [remote state](https://developer.ha
 ```
 cd infra/1-terraform-init
 export ENVIRONMENT=dev
-export TF_VAR_environment={$ENVIRONMENT}
+export TF_VAR_environment=${ENVIRONMENT}
 
 terraform init
 terraform plan -out=plan.tfplan
@@ -24,7 +24,7 @@ Similar to above, the Terraform commands are:
 ```
 cd infra/1-terraform-init
 export ENVIRONMENT=dev
-export TF_VAR_environment={$ENVIRONMENT}
+export TF_VAR_environment=${ENVIRONMENT}
 
 terraform init
 terraform plan -destroy -out=plan.tfplan

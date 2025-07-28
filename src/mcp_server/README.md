@@ -1,26 +1,28 @@
 # MCP Server
 
-This is the MCP (Model Context Protocol) server for the Data Platform project.
+This is the containerized MCP (Model Context Protocol) server for the Data Platform project.
+
+## Architecture
+
+The MCP server runs as a single Docker container that includes:
+- **Custom MCP Server** (Port 8000): FastAPI application with multiple MCP implementations
+- **External MongoDB MCP Server** (Port 8001): Official MongoDB MCP server from GitHub
+- **Multiple MCP Types**: MongoDB, AWS, Sequential Thinking MCPs
 
 ## Configuration
 
-The MCP server uses AWS Systems Manager Parameter Store for configuration. The following parameters are required:
+The MCP server uses AWS Systems Manager Parameter Store for configuration. All parameters are automatically created by Terraform during infrastructure deployment.
 
-- `/remote-mcp-server/aws-region`: AWS region (default: ap-southeast-2)
-- `/remote-mcp-server/mongo-uri`: MongoDB connection URI
-- `/remote-mcp-server/mongo-db`: MongoDB database name
-- `/remote-mcp-server/mongodb-mcp-server-url`: URL of the MongoDB MCP server
-- `/remote-mcp-server/mcp-server-url`: URL of the main MCP server
-- `/remote-mcp-server/cognito-user-pool-id`: Cognito User Pool ID
-- `/remote-mcp-server/cognito-client-id`: Cognito Client ID
-- `/remote-mcp-server/bedrock-agent-id`: Bedrock Agent ID
-- `/remote-mcp-server/bedrock-agent-alias-id`: Bedrock Agent Alias ID
+## Deployment
 
-## Setting Up Parameters
+### Prerequisites
+- AWS CLI configured with appropriate permissions
+- Terraform installed (version 1.0.0 or later)
+- Docker installed (for building container images)
 
 ### Step 1: Deploy Infrastructure
 
-First, deploy the infrastructure using Terraform:
+Deploy the infrastructure using Terraform (this automatically creates all SSM parameters):
 
 ```bash
 cd ../../infra/2-chatbot-interface
@@ -28,99 +30,94 @@ export PROJECT_CODE=FPEI2606
 export PROJECT_NAME=data-platform-remote-mcp-server
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Initialize Terraform with S3 backend
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"
-terraform plan -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
-terraform apply -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
+
+# Review and apply infrastructure
+terraform plan -out=plan.tfplan -var="environment=${ENVIRONMENT}" -var="mongo_uri=mongodb+srv://username:password@cluster.mongodb.net" -var="mongo_db=data_platform"
+terraform apply plan.tfplan
 ```
 
-### Step 2: Get Infrastructure Outputs
+### Step 2: Build and Deploy Container
 
-After the infrastructure is deployed, get the required values:
-
-```bash
-# Get all outputs
-terraform output
-
-# Or get specific outputs
-echo "COGNITO_USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)"
-echo "COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id)"
-echo "BEDROCK_AGENT_ID=$(terraform output -raw bedrock_agent_id)"
-echo "BEDROCK_AGENT_ALIAS_ID=$(terraform output -raw bedrock_agent_alias_id)"
-echo "MCP_SERVER_URL=http://$(terraform output -raw mcp_server_private_ip):8000"
-echo "MONGODB_MCP_SERVER_URL=http://$(terraform output -raw mcp_server_private_ip):8001"
-```
-
-### Step 3: Create .env File and Upload Parameters
-
-1. Create a `.env` file with the infrastructure outputs:
-
-```bash
-# Required parameters
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net
-MONGO_DB=data_platform
-
-# Infrastructure outputs (get these from terraform output)
-COGNITO_USER_POOL_ID=ap-southeast-2_xxxxxxxxx
-COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
-BEDROCK_AGENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
-BEDROCK_AGENT_ALIAS_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
-MCP_SERVER_URL=http://10.0.1.100:8000
-MONGODB_MCP_SERVER_URL=http://10.0.1.100:8001
-AWS_REGION=ap-southeast-2
-```
-
-2. Run the upload script:
+Build and deploy the MCP server container:
 
 ```bash
 cd ../../scripts
-python upload_params_to_ssm.py --env-file .env --prefix /remote-mcp-server --region ap-southeast-2
+chmod +x build_and_deploy.sh
+./build_and_deploy.sh dev ap-southeast-2
 ```
 
-### Alternative: Manual Parameter Creation
+### Step 3: Verify Deployment
 
-You can also create parameters manually using AWS CLI:
+Check the deployment status:
 
 ```bash
-# Required parameters
-aws ssm put-parameter --name "/remote-mcp-server/mongo-uri" --value "mongodb://username:password@hostname:27017" --type "SecureString" --overwrite
-aws ssm put-parameter --name "/remote-mcp-server/mongo-db" --value "data_platform" --type "String" --overwrite
+# Get ALB DNS name
+terraform output alb_dns_name
 
-# Infrastructure-dependent parameters (use terraform outputs)
-aws ssm put-parameter --name "/remote-mcp-server/cognito-user-pool-id" --value "$(terraform output -raw cognito_user_pool_id)" --type "String" --overwrite
-aws ssm put-parameter --name "/remote-mcp-server/cognito-client-id" --value "$(terraform output -raw cognito_client_id)" --type "String" --overwrite
-aws ssm put-parameter --name "/remote-mcp-server/bedrock-agent-id" --value "$(terraform output -raw bedrock_agent_id)" --type "String" --overwrite
-aws ssm put-parameter --name "/remote-mcp-server/bedrock-agent-alias-id" --value "$(terraform output -raw bedrock_agent_alias_id)" --type "String" --overwrite
+# Check ECS service status
+aws ecs describe-services --cluster remote-mcp-server-dev-cluster --services remote-mcp-server-dev-mcp-server --region ap-southeast-2
 ```
 
 ## Local Development
 
-For local development, you can use a `.env` file with the same parameters. The application will fall back to environment variables if SSM parameters are not available.
+For local development, use Docker Compose:
 
-## IAM Permissions
+```bash
+# Start local development environment
+docker-compose up
 
-The EC2 instance or ECS task running this application needs the following IAM permissions:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ssm:GetParameter"
-            ],
-            "Resource": "arn:aws:ssm:*:*:parameter/remote-mcp-server/*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "bedrock:*",
-                "bedrock-runtime:*"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
+# Access services locally
+# MCP Server: http://localhost:8000
+# MongoDB MCP Server: http://localhost:8001
+# Local MongoDB: mongodb://admin:password@localhost:27017
 ```
 
-Note: These permissions are automatically configured when using the Terraform infrastructure.
+### Local Testing
+
+```bash
+# Test MCP server health
+curl http://localhost:8000/health
+
+# Test MCP processing
+curl -X POST http://localhost:8000/process \
+  -H "Content-Type: application/json" \
+  -d '{"query": "test query", "mcp_type": "mongodb"}'
+```
+
+## Configuration Parameters
+
+The following SSM parameters are automatically created by Terraform:
+
+- `/remote-mcp-server/aws-region`: AWS region
+- `/remote-mcp-server/mongo-uri`: MongoDB connection URI (from terraform variable)
+- `/remote-mcp-server/mongo-db`: MongoDB database name (from terraform variable)
+- `/remote-mcp-server/mcp-server-url`: Internal MCP server URL
+- `/remote-mcp-server/mongodb-mcp-server-url`: Internal MongoDB MCP server URL
+- `/remote-mcp-server/cognito-user-pool-id`: Cognito User Pool ID
+- `/remote-mcp-server/cognito-client-id`: Cognito Client ID
+- `/remote-mcp-server/bedrock-agent-id`: Bedrock Agent ID
+- `/remote-mcp-server/bedrock-agent-alias-id`: Bedrock Agent Alias ID
+
+## Container Features
+
+- **Single Container**: Both MCP servers run in one container for simplicity
+- **Multi-Port**: Exposes ports 8000 and 8001
+- **Auto-Scaling**: ECS Fargate handles scaling based on demand
+- **Centralized Logging**: All logs go to CloudWatch under `/ecs/` log groups
+- **Cross-Region AI**: Supports Bedrock models in different regions
+
+## Troubleshooting
+
+```bash
+# Check container logs
+aws logs tail /ecs/remote-mcp-server-dev-mcp-server --follow --region ap-southeast-2
+
+# Check ECS service events
+aws ecs describe-services --cluster remote-mcp-server-dev-cluster --services remote-mcp-server-dev-mcp-server --region ap-southeast-2
+
+# Verify SSM parameters
+aws ssm get-parameters-by-path --path "/remote-mcp-server" --region ap-southeast-2
+```

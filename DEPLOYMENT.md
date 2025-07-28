@@ -12,7 +12,7 @@
 ```bash
 cd infra/2-chatbot-interface
 export PROJECT_CODE=FPEI2606
-export PROJECT_NAME=data-platform-remote-mcp-server
+export PROJECT_NAME=data-platform-mcp
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"
@@ -20,7 +20,7 @@ terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCO
 
 2. Review the deployment plan:
 ```bash
-terraform plan \
+terraform plan -out=plan.tfplan \
   -var="environment=${ENVIRONMENT}" \
   -var="mongo_uri=mongodb+srv://username:password@cluster.mongodb.net" \
   -var="mongo_db=data_platform"
@@ -28,10 +28,7 @@ terraform plan \
 
 3. Deploy the infrastructure:
 ```bash
-terraform apply \
-  -var="environment=${ENVIRONMENT}" \
-  -var="mongo_uri=mongodb+srv://username:password@cluster.mongodb.net" \
-  -var="mongo_db=data_platform"
+terraform apply plan.tfplan
 ```
 
 **Note**: The infrastructure creates:

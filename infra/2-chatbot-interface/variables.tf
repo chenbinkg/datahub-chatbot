@@ -1,6 +1,6 @@
 variable "project_name" {
   type = string
-  default = "data-platform-remote-mcp-server"
+  default = "data-platform-mcp"
 }
 
 variable "project_id" {

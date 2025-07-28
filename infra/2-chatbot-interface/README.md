@@ -41,7 +41,7 @@ The infrastructure consists of the following components:
 ```bash
 cd infra/2-chatbot-interface
 export PROJECT_CODE=FPEI2606
-export PROJECT_NAME=data-platform-remote-mcp-server
+export PROJECT_NAME=data-platform-mcp
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"
@@ -50,13 +50,13 @@ terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCO
 2. Review the plan:
 
 ```bash
-terraform plan -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
+terraform plan -out=plan.tfplan -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
 ```
 
 3. Apply the changes:
 
 ```bash
-terraform apply -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
+terraform apply plan.tfplan
 ```
 
 ### Environment Variables
@@ -66,9 +66,9 @@ The infrastructure supports different environments (dev, test, prod) by appendin
 Example:
 
 ```bash
-terraform apply -var="environment=dev"
-terraform apply -var="environment=test"
-terraform apply -var="environment=prod"
+terraform plan -var="environment=dev"
+terraform plan -var="environment=test"
+terraform plan -var="environment=prod"
 ```
 
 ## MongoDB Integration

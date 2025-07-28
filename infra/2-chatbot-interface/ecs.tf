@@ -10,18 +10,6 @@ resource "aws_ecs_cluster" "main" {
   tags = local.tags
 }
 
-# ECR Repository for Gradio UI
-resource "aws_ecr_repository" "gradio_ui" {
-  name                 = "${local.name_prefix}-gradio-ui"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = local.tags
-}
-
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "gradio_ui" {
   name              = "/ecs/${local.name_prefix}-gradio-ui"

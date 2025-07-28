@@ -13,10 +13,11 @@ output "cognito_client_id" {
   value       = aws_cognito_user_pool_client.client.id
 }
 
-output "mcp_server_private_ip" {
-  description = "The private IP address of the MCP server"
-  value       = aws_instance.mcp_server.private_ip
-}
+# MCP server is now containerized, no EC2 instance
+# output "mcp_server_private_ip" {
+#   description = "The private IP address of the MCP server"
+#   value       = aws_instance.mcp_server.private_ip
+# }
 
 output "ecr_repository_url" {
   description = "The URL of the Gradio UI ECR repository"
@@ -45,10 +46,10 @@ output "public_subnets" {
 
 output "bedrock_agent_id" {
   description = "The ID of the Bedrock Agent"
-  value       = aws_bedrock_agent.mcp_agent.id
+  value       = aws_bedrockagent_agent.mcp_agent.id
 }
 
 output "bedrock_agent_alias_id" {
   description = "The ID of the Bedrock Agent Alias"
-  value       = aws_bedrock_agent_alias.mcp_agent_alias.id
+  value       = aws_bedrockagent_agent_alias.mcp_agent_alias.id
 }

@@ -1,5 +1,5 @@
 # Bedrock Agent
-resource "aws_bedrock_agent" "mcp_agent" {
+resource "aws_bedrockagent_agent" "mcp_agent" {
   agent_name        = "${local.name_prefix}-agent"
   agent_resource_role_arn = aws_iam_role.bedrock_agent_role.arn
   foundation_model  = "anthropic.claude-3-sonnet-20240229-v1:0"
@@ -12,14 +12,12 @@ resource "aws_bedrock_agent" "mcp_agent" {
 }
 
 # Bedrock Agent Action Group
-resource "aws_bedrock_agent_action_group" "mcp_action_group" {
-  agent_id          = aws_bedrock_agent.mcp_agent.id
+resource "aws_bedrockagent_agent_action_group" "mcp_action_group" {
+  agent_id          = aws_bedrockagent_agent.mcp_agent.id
   action_group_name = "${local.name_prefix}-action-group"
-  
+  agent_version = "DRAFT"
   action_group_executor {
-    lambda {
-      lambda_arn = aws_lambda_function.mcp_agent_lambda.arn
-    }
+    lambda  = aws_lambda_function.mcp_agent_lambda.arn
   }
   
   description = "Action group for interacting with MCP servers"
@@ -99,23 +97,17 @@ resource "aws_bedrock_agent_action_group" "mcp_action_group" {
 }
 
 # Bedrock Agent Alias
-resource "aws_bedrock_agent_alias" "mcp_agent_alias" {
-  agent_id    = aws_bedrock_agent.mcp_agent.id
-  alias_name  = "${local.name_prefix}-alias"
+resource "aws_bedrockagent_agent_alias" "mcp_agent_alias" {
+  agent_id    = aws_bedrockagent_agent.mcp_agent.id
+  agent_alias_name  = "${local.name_prefix}-alias"
   description = "Alias for MCP agent"
   
-  routing_configuration {
-    agent_version = aws_bedrock_agent_version.mcp_agent_version.agent_version
-  }
+
   
   tags = local.tags
 }
 
-# Bedrock Agent Version
-resource "aws_bedrock_agent_version" "mcp_agent_version" {
-  agent_id     = aws_bedrock_agent.mcp_agent.id
-  agent_version = "DRAFT"
-}
+# Agent alias will use the default version automatically
 
 # IAM Role for Bedrock Agent
 resource "aws_iam_role" "bedrock_agent_role" {
@@ -263,7 +255,7 @@ exports.handler = async (event) => {
         
         // Call MCP server
         const mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:8000';
-        const response = await callMcpServer(`${mcpServerUrl}/process`, requestBody);
+        const response = await callMcpServer(mcpServerUrl + '/process', requestBody);
         
         return {
             actionGroup: apiPath,
@@ -310,13 +302,13 @@ async function callMcpServer(apiUrl, body) {
                     const parsedData = JSON.parse(data);
                     resolve(parsedData);
                 } catch (e) {
-                    reject(new Error(`Failed to parse response: ${e.message}`));
+                    reject(new Error('Failed to parse response: ' + e.message));
                 }
             });
         });
         
         req.on('error', (e) => {
-            reject(new Error(`Request error: ${e.message}`));
+            reject(new Error('Request error: ' + e.message));
         });
         
         req.write(JSON.stringify(body));
@@ -326,15 +318,4 @@ async function callMcpServer(apiUrl, body) {
 EOF
     filename = "index.js"
   }
-}
-
-# Output the Bedrock Agent ID and Alias ID
-output "bedrock_agent_id" {
-  description = "The ID of the Bedrock Agent"
-  value       = aws_bedrock_agent.mcp_agent.id
-}
-
-output "bedrock_agent_alias_id" {
-  description = "The ID of the Bedrock Agent Alias"
-  value       = aws_bedrock_agent_alias.mcp_agent_alias.id
 }

@@ -38,33 +38,30 @@ resource "aws_ssm_parameter" "cognito_client_id" {
 
 # These parameters need to be set manually or through the upload script
 resource "aws_ssm_parameter" "mongo_uri" {
-  name      = "/remote-mcp-server/mongo-uri"
-  type      = "SecureString"
-  value     = var.mongo_uri
-  tags      = local.tags
-  overwrite = true
+  name  = "/remote-mcp-server/mongo-uri"
+  type  = "SecureString"
+  value = var.mongo_uri
+  tags  = local.tags
 }
 
 resource "aws_ssm_parameter" "mongo_db" {
-  name      = "/remote-mcp-server/mongo-db"
-  type      = "String"
-  value     = var.mongo_db
-  tags      = local.tags
-  overwrite = true
+  name  = "/remote-mcp-server/mongo-db"
+  type  = "String"
+  value = var.mongo_db
+  tags  = local.tags
 }
 
+# Placeholder parameters for Bedrock agent (will be updated when Bedrock agent resources are supported)
 resource "aws_ssm_parameter" "bedrock_agent_id" {
-  name      = "/remote-mcp-server/bedrock-agent-id"
-  type      = "String"
-  value     = aws_bedrock_agent.mcp_agent.id
-  tags      = local.tags
-  overwrite = true
+  name  = "/remote-mcp-server/bedrock-agent-id"
+  type  = "String"
+  value = aws_bedrockagent_agent.mcp_agent.id
+  tags  = local.tags
 }
 
 resource "aws_ssm_parameter" "bedrock_agent_alias_id" {
-  name      = "/remote-mcp-server/bedrock-agent-alias-id"
-  type      = "String"
-  value     = aws_bedrock_agent_alias.mcp_agent_alias.id
-  tags      = local.tags
-  overwrite = true
+  name  = "/remote-mcp-server/bedrock-agent-alias-id"
+  type  = "String"
+  value = aws_bedrockagent_agent_alias.mcp_agent_alias.id
+  tags  = local.tags
 }
