@@ -25,5 +25,5 @@ variable "service_category" {
 
 variable "authors" {
   type = string
-  default = "Bryce Chen, Maxime Rio"
+  default = "Bryce Chen/Maxime Rio"
 }

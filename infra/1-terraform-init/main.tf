@@ -8,6 +8,7 @@ locals {
     ProjectName = var.project_name
     Environment = var.environment
   }
+  name_prefix = "${var.project_name}-${var.environment}"
 }
 
 resource "aws_s3_bucket" "terraform_setup" {
@@ -15,7 +16,7 @@ resource "aws_s3_bucket" "terraform_setup" {
   #checkov:skip=CKV_AWS_144: "Ensure that S3 bucket has cross-region replication enabled"
   #checkov:skip=CKV2_AWS_61: "Ensure that an S3 bucket has a lifecycle configuration"
   #checkov:skip=CKV2_AWS_62: "Ensure S3 buckets should have event notifications enabled"
-  bucket        = "${var.project_name}-${data.aws_caller_identity.current.account_id}-terraform-state-${var.environment}"
+  bucket        = "${local.name_prefix}-${data.aws_caller_identity.current.account_id}-terraform-state"
   tags          = local.tags
   force_destroy = true
 }

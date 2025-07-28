@@ -1,0 +1,21 @@
+terraform {
+  required_version = "= 1.5.6"
+  backend "s3" {
+    encrypt        = true
+    region         = "ap-southeast-2"
+    # The bucket name and key will be provided via -backend-config parameters
+  }
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "= 5.88.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "= 2.5.2"
+    }
+  }
+}
+provider "aws" {
+  region = "ap-southeast-2"
+}
