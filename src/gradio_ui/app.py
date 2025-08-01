@@ -44,36 +44,7 @@ def authenticate(username, password):
     except Exception as e:
         return False, str(e)
 
-def process_query(query, token, mcp_type="mongodb_external", history=None):
-    """Process user query through Bedrock agent and MCP server"""
-    if not verify_token(token, COGNITO_USER_POOL_ID):
-        return "Authentication failed. Please log in again."
-    
-    if history is None:
-        history = []
-    
-    try:
-        # Call Bedrock agent with the query
-        response = bedrock_agent.invoke_agent(
-            agentId=BEDROCK_AGENT_ID,
-            agentAliasId=BEDROCK_AGENT_ALIAS_ID,
-            inputText=query,
-            sessionId="gradio-session",  # You might want to make this user-specific
-            enableTrace=True,
-            sessionState={
-                "mcp_type": mcp_type  # Pass the MCP type to the agent
-            }
-        )
-        
-        # Extract the response
-        result = json.loads(response["completion"])
-        
-        # Update conversation history
-        history.append((query, result))
-        
-        return history
-    except Exception as e:
-        return f"Error: {str(e)}"
+
 
 # Create Gradio interface
 with gr.Blocks(title="Data Platform Chatbot") as demo:
@@ -88,7 +59,7 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
         token_state = gr.State("")
         
     with gr.Tab("Chat"):
-        chatbot = gr.Chatbot()
+        chatbot = gr.Chatbot(type="messages")
         msg = gr.Textbox(label="Message")
         mcp_type = gr.Dropdown(
             label="MCP Type",
@@ -98,16 +69,81 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
                 "aws", 
                 "sequential_thinking"
             ],
-            value="mongodb_external"
+            value="mongodb"
         )
         clear = gr.Button("Clear")
         
         def respond(message, chat_history, token, mcp_type):
             if not token:
-                return chat_history + [("", "Please login first")]
+                return chat_history + [{"role": "assistant", "content": "Please login first"}], ""
             
-            updated_history = process_query(message, token, mcp_type, chat_history)
-            return updated_history, ""
+            # Add user message to history
+            chat_history.append({"role": "user", "content": message})
+            
+            # Get response from MCP server via Bedrock agent
+            try:
+                print(f"Invoking Bedrock Agent - ID: {BEDROCK_AGENT_ID}, Alias: {BEDROCK_AGENT_ALIAS_ID}")
+                print(f"Message: {message}, MCP Type: {mcp_type}")
+                
+                # Send message directly - let agent decide if MCP tools are needed
+                enhanced_message = message
+                
+                # Use a unique session ID to avoid cached agent state
+                import uuid
+                session_id = f"gradio-{str(uuid.uuid4())[:8]}"
+                
+                response = bedrock_agent.invoke_agent(
+                    agentId=BEDROCK_AGENT_ID,
+                    agentAliasId=BEDROCK_AGENT_ALIAS_ID,
+                    inputText=enhanced_message,
+                    sessionId=session_id,
+                    enableTrace=True
+                )
+                
+                print(f"Bedrock agent response keys: {list(response.keys())}")
+                
+                # Extract response text from Bedrock agent response
+                # Bedrock agent returns streaming response, need to read it properly
+                result_text = ""
+                print(f"Full Bedrock response: {response}")
+                
+                if 'completion' in response:
+                    event_stream = response['completion']
+                    try:
+                        for event in event_stream:
+                            print(f"Processing event: {event}")
+                            if 'chunk' in event:
+                                chunk = event['chunk']
+                                if 'bytes' in chunk:
+                                    chunk_text = chunk['bytes'].decode('utf-8')
+                                    print(f"Chunk text: {chunk_text}")
+                                    result_text += chunk_text
+                            elif 'trace' in event:
+                                # Check if this trace contains the final response
+                                trace = event.get('trace', {})
+                                print(f"Trace event: {trace}")
+                    except Exception as stream_error:
+                        print(f"Error processing stream: {stream_error}")
+                        result_text = f"Stream processing error: {str(stream_error)}"
+                    
+                    result = result_text if result_text else "No response from agent"
+                else:
+                    result = "No completion in response"
+                
+                print(f"Final result: {result}")
+                
+                # Add assistant response to history
+                chat_history.append({"role": "assistant", "content": result})
+                
+            except Exception as e:
+                error_msg = f"Error: {str(e)}"
+                print(f"Exception occurred: {error_msg}")
+                print(f"Exception type: {type(e).__name__}")
+                import traceback
+                print(f"Traceback: {traceback.format_exc()}")
+                chat_history.append({"role": "assistant", "content": error_msg})
+            
+            return chat_history, ""
         
         msg.submit(respond, [msg, chatbot, token_state, mcp_type], [chatbot, msg])
         clear.click(lambda: None, None, chatbot, queue=False)
