@@ -36,6 +36,20 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8001
+    to_port     = 8001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -77,7 +91,7 @@ resource "aws_security_group" "mcp_server" {
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id, aws_security_group.lambda.id]
+    security_groups = [aws_security_group.ecs.id, aws_security_group.lambda.id, aws_security_group.alb.id]
   }
 
   ingress {

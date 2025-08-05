@@ -11,14 +11,14 @@ resource "aws_ssm_parameter" "aws_region" {
 resource "aws_ssm_parameter" "mcp_server_url" {
   name  = "/remote-mcp-server/mcp-server-url"
   type  = "String"
-  value = "http://${local.name_prefix}-mcp-server.${local.name_prefix}-cluster.local:8000"
+  value = "http://${aws_lb.main.dns_name}:8000"
   tags  = local.tags
 }
 
 resource "aws_ssm_parameter" "mongodb_mcp_server_url" {
   name  = "/remote-mcp-server/mongodb-mcp-server-url"
   type  = "String"
-  value = "http://${local.name_prefix}-mcp-server.${local.name_prefix}-cluster.local:8001"
+  value = "http://${aws_lb.main.dns_name}:8001"
   tags  = local.tags
 }
 
@@ -62,6 +62,6 @@ resource "aws_ssm_parameter" "bedrock_agent_id" {
 resource "aws_ssm_parameter" "bedrock_agent_alias_id" {
   name  = "/remote-mcp-server/bedrock-agent-alias-id"
   type  = "String"
-  value = aws_bedrockagent_agent_alias.mcp_agent_alias.id
+  value = aws_bedrockagent_agent_alias.mcp_agent_alias.agent_alias_id
   tags  = local.tags
 }

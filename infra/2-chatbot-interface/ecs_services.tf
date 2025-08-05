@@ -34,6 +34,10 @@ resource "aws_ecs_task_definition" "mcp_server" {
         {
           name  = "AWS_REGION"
           value = var.aws_region
+        },
+        {
+          name  = "MONGO_URI"
+          value = var.mongo_uri
         }
       ]
       logConfiguration = {
@@ -63,6 +67,22 @@ resource "aws_ecs_service" "mcp_server" {
     security_groups  = [aws_security_group.mcp_server.id]
     assign_public_ip = false
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.mcp_server.arn
+    container_name   = "mcp-server-${var.environment}"
+    container_port   = 8000
+  }
+
+  # Temporarily disabled port 8001 ALB registration to stop health check failures
+  # The MongoDB MCP server is still running on port 8001, just not load balanced
+  # load_balancer {
+  #   target_group_arn = aws_lb_target_group.mongodb_mcp_server.arn
+  #   container_name   = "mcp-server-${var.environment}"
+  #   container_port   = 8001
+  # }
+
+  depends_on = [aws_lb_listener.mcp_server]
 
   tags = local.tags
 }

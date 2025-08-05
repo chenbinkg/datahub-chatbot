@@ -47,7 +47,7 @@ sequential_thinking_mcp = SequentialThinkingMCP()
 # Request models
 class MCPRequest(BaseModel):
     query: str
-    mcp_type: str = "mongodb"  # Default to MongoDB MCP
+    mcp_type: str = "mongodb"  # Default to internal MongoDB MCP
     parameters: Optional[Dict[str, Any]] = None
 
 # Response models

@@ -62,7 +62,7 @@ resource "aws_ecs_task_definition" "gradio_ui" {
 
 # ECS Service
 resource "aws_ecs_service" "gradio_ui" {
-  name            = "${local.name_prefix}-service"
+  name            = "${local.name_prefix}-gradio-ui"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.gradio_ui.arn
   desired_count   = var.service_desired_count

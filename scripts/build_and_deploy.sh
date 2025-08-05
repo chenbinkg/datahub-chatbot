@@ -13,8 +13,8 @@ echo "Building and deploying for environment: $ENVIRONMENT in region: $AWS_REGIO
 
 # Get ECR repository URLs from Terraform
 cd ../infra/2-chatbot-interface
-MCP_SERVER_REPO=$(terraform output -raw ecr_mcp_server_url 2>/dev/null || echo "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/remote-mcp-server-${ENVIRONMENT}-mcp-server")
-GRADIO_UI_REPO=$(terraform output -raw ecr_repository_url 2>/dev/null || echo "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/remote-mcp-server-${ENVIRONMENT}-gradio-ui")
+MCP_SERVER_REPO=$(terraform output -raw ecr_mcp_server_url 2>/dev/null || echo "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/data-platform-mcp-${ENVIRONMENT}-mcp-server")
+GRADIO_UI_REPO=$(terraform output -raw ecr_repository_url 2>/dev/null || echo "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/data-platform-mcp-${ENVIRONMENT}-gradio-ui")
 
 echo "MCP Server Repository: $MCP_SERVER_REPO"
 echo "Gradio UI Repository: $GRADIO_UI_REPO"
@@ -36,17 +36,21 @@ docker buildx build --platform linux/amd64 -t $GRADIO_UI_REPO:latest --push .
 # Update ECS services
 echo "Updating ECS services..."
 aws ecs update-service \
-    --cluster "remote-mcp-server-${ENVIRONMENT}-cluster" \
-    --service "remote-mcp-server-${ENVIRONMENT}-mcp-server" \
+    --cluster "data-platform-mcp-${ENVIRONMENT}-cluster" \
+    --service "data-platform-mcp-${ENVIRONMENT}-mcp-server" \
     --force-new-deployment \
-    --region $AWS_REGION
+    --region $AWS_REGION \
+    --no-cli-pager \
+    --output text > /dev/null
 
 aws ecs update-service \
-    --cluster "remote-mcp-server-${ENVIRONMENT}-cluster" \
-    --service "remote-mcp-server-${ENVIRONMENT}-gradio-ui" \
+    --cluster "data-platform-mcp-${ENVIRONMENT}-cluster" \
+    --service "data-platform-mcp-${ENVIRONMENT}-gradio-ui" \
     --force-new-deployment \
-    --region $AWS_REGION
+    --region $AWS_REGION \
+    --no-cli-pager \
+    --output text > /dev/null
 
 echo "Deployment complete!"
 echo "Check service status with:"
-echo "aws ecs describe-services --cluster remote-mcp-server-${ENVIRONMENT}-cluster --services remote-mcp-server-${ENVIRONMENT}-mcp-server remote-mcp-server-${ENVIRONMENT}-gradio-ui --region $AWS_REGION"
+echo "aws ecs describe-services --cluster data-platform-mcp-${ENVIRONMENT}-cluster --services data-platform-mcp-${ENVIRONMENT}-mcp-server data-platform-mcp-${ENVIRONMENT}-gradio-ui --region $AWS_REGION"

@@ -80,6 +80,7 @@ class SequentialThinkingMCP(BaseMCP):
                 intermediate_results.append(result)
             
             # Step 3: Synthesize final answer
+            step_results = "\n".join([f"Step {i+1}: {result}" for i, result in enumerate(intermediate_results)])
             synthesis_prompt = f"""
             Original query: {query}
             
@@ -87,7 +88,7 @@ class SequentialThinkingMCP(BaseMCP):
             {breakdown}
             
             Step-by-step results:
-            {"\n".join([f"Step {i+1}: {result}" for i, result in enumerate(intermediate_results)])}
+            {step_results}
             
             Synthesize a final, comprehensive answer to the original query based on these steps.
             """

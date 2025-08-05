@@ -1,15 +1,4 @@
-# Multi-stage build with pixi
-FROM ghcr.io/prefix-dev/pixi:latest AS pixi-builder
-
-WORKDIR /app
-
-# Copy pixi configuration
-COPY pyproject.toml ./
-
-# Install dependencies with pixi (much faster)
-RUN pixi install
-
-# Main image with Python 3.11.11-slim
+# Simplified Dockerfile for local testing
 FROM python:3.11.11-slim
 
 # Install system dependencies
@@ -25,17 +14,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Set working directory
 WORKDIR /app
 
-# Copy the pixi environment
-COPY --from=pixi-builder /app/.pixi/envs/default /opt/conda
-
-# Add conda to PATH
-ENV PATH="/opt/conda/bin:$PATH"
+# Install Python dependencies
+RUN pip install fastapi uvicorn pymongo requests boto3
 
 # Install official MongoDB MCP server globally
 RUN npm install -g mongodb-mcp-server@latest
-
-# Setup main MCP server
-WORKDIR /app
 
 # Copy application code
 COPY . .

@@ -2,9 +2,30 @@
 resource "aws_bedrockagent_agent" "mcp_agent" {
   agent_name        = "${local.name_prefix}-agent"
   agent_resource_role_arn = aws_iam_role.bedrock_agent_role.arn
-  foundation_model  = "anthropic.claude-3-sonnet-20240229-v1:0"
+  foundation_model  = "anthropic.claude-3-5-sonnet-20241022-v2:0"
   
-  instruction = "You are an AI assistant that helps users interact with MongoDB databases through MCP (Model Context Protocol) servers. You can process queries, analyze data, and provide insights."
+  instruction = <<EOF
+You are a helpful AI assistant with access to specialized tools. NEVER ask users which tool to use - automatically select the appropriate tool based on their query.
+
+**AUTOMATIC TOOL SELECTION RULES:**
+- MongoDB/Database queries ("list databases", "show collections", "find users", etc.) → AUTOMATICALLY use mongodb MCP
+- AWS operations ("create S3 bucket", "list EC2 instances", etc.) → AUTOMATICALLY use aws MCP  
+- Complex reasoning/planning → AUTOMATICALLY use sequential_thinking MCP
+- General questions → Answer directly with your knowledge
+
+**IMPORTANT:** 
+- NEVER ask "what MCP type should I use?"
+- NEVER ask users to specify mongodb, aws, or sequential_thinking
+- ALWAYS choose the most appropriate tool automatically
+- If unsure, default to mongodb for database-related queries
+
+**Examples:**
+- "List the databases" → Use mongodb MCP immediately
+- "Show me collections" → Use mongodb MCP immediately
+- "Create an S3 bucket" → Use aws MCP immediately
+
+Provide direct, helpful responses by automatically selecting and using the right tool.
+EOF
   
   idle_session_ttl_in_seconds = 1800
   
@@ -20,7 +41,7 @@ resource "aws_bedrockagent_agent_action_group" "mcp_action_group" {
     lambda  = aws_lambda_function.mcp_agent_lambda.arn
   }
   
-  description = "Action group for interacting with MCP servers"
+  description = "Optional action group for interacting with MCP servers when specialized capabilities are needed"
   
   action_group_state = "ENABLED"
   
@@ -43,16 +64,11 @@ resource "aws_bedrockagent_agent_action_group" "mcp_action_group" {
                 "application/json" = {
                   schema = {
                     type = "object"
-                    required = ["query", "mcp_type"]
+                    required = ["query"]
                     properties = {
                       query = {
                         type        = "string"
                         description = "The query to process"
-                      }
-                      mcp_type = {
-                        type        = "string"
-                        description = "The type of MCP to use (mongodb, mongodb_external, aws, sequential_thinking)"
-                        enum        = ["mongodb", "mongodb_external", "aws", "sequential_thinking"]
                       }
                       parameters = {
                         type        = "object"
@@ -96,13 +112,20 @@ resource "aws_bedrockagent_agent_action_group" "mcp_action_group" {
   }
 }
 
+# Prepare and create agent version
+data "aws_bedrockagent_agent_versions" "mcp_agent_version" {
+  agent_id = aws_bedrockagent_agent.mcp_agent.id
+}
+
 # Bedrock Agent Alias
 resource "aws_bedrockagent_agent_alias" "mcp_agent_alias" {
   agent_id    = aws_bedrockagent_agent.mcp_agent.id
   agent_alias_name  = "${local.name_prefix}-alias"
   description = "Alias for MCP agent"
   
-
+  # routing_configuration {
+  #   agent_version = data.aws_bedrockagent_agent_versions.mcp_agent_version
+  # }
   
   tags = local.tags
 }
@@ -117,10 +140,18 @@ resource "aws_iam_role" "bedrock_agent_role" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
           Service = "bedrock.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+          ArnLike = {
+            "AWS:SourceArn" = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent/*"
+          }
         }
       }
     ]
@@ -143,17 +174,32 @@ resource "aws_iam_role_policy" "bedrock_agent_policy" {
         ]
         Effect   = "Allow"
         Resource = aws_lambda_function.mcp_agent_lambda.arn
+      },
+      {
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/anthropic.claude-*-sonnet-*"
       }
     ]
   })
+}
+
+# CloudWatch Log Group for Lambda
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${local.name_prefix}-mcp-agent-lambda"
+  retention_in_days = 14
+  tags = local.tags
 }
 
 # Lambda Function for Bedrock Agent
 resource "aws_lambda_function" "mcp_agent_lambda" {
   function_name = "${local.name_prefix}-mcp-agent-lambda"
   role          = aws_iam_role.lambda_role.arn
-  handler       = "index.handler"
-  runtime       = "nodejs18.x"
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.11"
   timeout       = 30
   
   filename      = data.archive_file.lambda_zip.output_path
@@ -166,11 +212,21 @@ resource "aws_lambda_function" "mcp_agent_lambda" {
   
   environment {
     variables = {
-      MCP_SERVER_URL = "http://${local.name_prefix}-mcp-server.${local.name_prefix}-cluster.local:8000"
+      MCP_SERVER_URL = "http://${aws_lb.main.dns_name}:8000"
     }
   }
   
+  depends_on = [aws_cloudwatch_log_group.lambda_logs]
   tags = local.tags
+}
+
+# Lambda permission for Bedrock Agent to invoke
+resource "aws_lambda_permission" "bedrock_agent_invoke" {
+  statement_id  = "AllowBedrockAgentInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.mcp_agent_lambda.function_name
+  principal     = "bedrock.amazonaws.com"
+  source_arn    = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent/${aws_bedrockagent_agent.mcp_agent.id}"
 }
 
 # Lambda IAM Role
@@ -205,6 +261,25 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+# Lambda additional permissions for MCP server access
+resource "aws_iam_role_policy" "lambda_mcp_access" {
+  name = "${local.name_prefix}-lambda-mcp-access"
+  role = aws_iam_role.lambda_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:ssm:*:*:parameter/remote-mcp-server/*"
+      }
+    ]
+  })
+}
+
 # Lambda Security Group
 resource "aws_security_group" "lambda" {
   name        = "${local.name_prefix}-lambda-sg"
@@ -228,94 +303,148 @@ data "archive_file" "lambda_zip" {
   
   source {
     content  = <<EOF
-const https = require('https');
-const http = require('http');
-const url = require('url');
+import json
+import os
+import urllib3
+import logging
 
-exports.handler = async (event) => {
-    console.log('Event:', JSON.stringify(event, null, 2));
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Initialize HTTP client
+http = urllib3.PoolManager()
+
+def lambda_handler(event, context):
+    logger.info(f"Lambda invoked with event: {json.dumps(event, indent=2)}")
     
-    try {
-        const apiPath = event.actionGroup;
-        const apiOperation = event.apiPath;
-        const parameters = event.parameters || [];
+    try:
+        action_group = event.get('actionGroup')
+        api_path = event.get('apiPath')
         
-        // Extract parameters
-        const paramMap = {};
-        parameters.forEach(param => {
-            paramMap[param.name] = param.value;
-        });
+        # Extract parameters from requestBody (Bedrock Agent format)
+        request_body = event.get('requestBody', {})
+        content = request_body.get('content', {})
+        app_json = content.get('application/json', {})
+        properties = app_json.get('properties', [])
         
-        // Prepare request to MCP server
-        const requestBody = {
-            query: paramMap.query,
-            mcp_type: paramMap.mcp_type || 'mongodb',
-            parameters: paramMap.parameters ? JSON.parse(paramMap.parameters) : {}
-        };
+        logger.info(f"Processing properties: {properties}")
         
-        // Call MCP server
-        const mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:8000';
-        const response = await callMcpServer(mcpServerUrl + '/process', requestBody);
+        # Convert properties to parameter map
+        param_map = {}
+        for prop in properties:
+            param_map[prop['name']] = prop['value']
         
-        return {
-            actionGroup: apiPath,
-            apiPath: apiOperation,
-            response: response
-        };
-    } catch (error) {
-        console.error('Error:', error);
-        return {
-            actionGroup: event.actionGroup,
-            apiPath: event.apiPath,
-            response: {
-                status: 'error',
-                message: error.message
+        logger.info(f"Parameter map: {param_map}")
+        
+        # Prepare request to MCP server
+        # Handle parameters - try to parse as JSON, otherwise use as string
+        parameters_raw = param_map.get('parameters', '{}')
+        try:
+            if parameters_raw.startswith('{') and parameters_raw.endswith('}'):
+                parameters = json.loads(parameters_raw)
+            else:
+                # If it's not JSON, treat it as a string parameter
+                parameters = {'raw_parameters': parameters_raw}
+        except json.JSONDecodeError:
+            parameters = {'raw_parameters': parameters_raw}
+        
+        # Ensure mcp_type always has a value
+        mcp_type = param_map.get('mcp_type')
+        if not mcp_type:
+            mcp_type = 'mongodb'  # Default to mongodb
+            logger.info(f"No mcp_type provided, defaulting to: {mcp_type}")
+        
+        mcp_request = {
+            'query': param_map.get('query'),
+            'mcp_type': mcp_type,
+            'parameters': parameters
+        }
+        
+        logger.info(f"Final MCP request: {mcp_request}")
+        
+        logger.info(f"Request body for MCP server: {mcp_request}")
+        
+        # Validate required fields
+        if not mcp_request['query']:
+            raise ValueError("Query parameter is required")
+        
+        # Ensure mcp_type is valid
+        valid_mcp_types = ['mongodb', 'mongodb_external', 'aws', 'sequential_thinking']
+        if mcp_request['mcp_type'] not in valid_mcp_types:
+            logger.warning(f"Invalid mcp_type: {mcp_request['mcp_type']}, defaulting to mongodb")
+            mcp_request['mcp_type'] = 'mongodb'
+        
+        # Call MCP server
+        mcp_server_url = os.environ.get('MCP_SERVER_URL', 'http://localhost:8000')
+        url = f"{mcp_server_url}/process"
+        
+        logger.info(f"Calling MCP server at: {url}")
+        
+        response = http.request(
+            'POST',
+            url,
+            body=json.dumps(mcp_request),
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        logger.info(f"MCP server response status: {response.status}")
+        logger.info(f"Raw MCP server response: {response.data.decode('utf-8')}")
+        
+        if response.status == 200:
+            mcp_response = json.loads(response.data.decode('utf-8'))
+        else:
+            mcp_response = {
+                'status': 'error',
+                'message': f'MCP server returned status {response.status}',
+                'details': response.data.decode('utf-8')
             }
-        };
-    }
-};
-
-async function callMcpServer(apiUrl, body) {
-    return new Promise((resolve, reject) => {
-        const parsedUrl = url.parse(apiUrl);
-        const options = {
-            hostname: parsedUrl.hostname,
-            port: parsedUrl.port,
-            path: parsedUrl.path,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        };
         
-        const client = parsedUrl.protocol === 'https:' ? https : http;
+        logger.info(f"MCP server parsed response: {mcp_response}")
         
-        const req = client.request(options, (res) => {
-            let data = '';
-            
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            
-            res.on('end', () => {
-                try {
-                    const parsedData = JSON.parse(data);
-                    resolve(parsedData);
-                } catch (e) {
-                    reject(new Error('Failed to parse response: ' + e.message));
+        # Format response for Bedrock Agent
+        return {
+            'messageVersion': '1.0',
+            'response': {
+                'actionGroup': action_group,
+                'apiPath': api_path,
+                'httpMethod': 'POST',
+                'httpStatusCode': 200,
+                'responseBody': {
+                    'application/json': {
+                        'body': json.dumps(mcp_response)
+                    }
                 }
-            });
-        });
+            }
+        }
         
-        req.on('error', (e) => {
-            reject(new Error('Request error: ' + e.message));
-        });
+    except Exception as e:
+        logger.error(f"Lambda error: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         
-        req.write(JSON.stringify(body));
-        req.end();
-    });
-}
+        error_response = {
+            'status': 'error',
+            'message': str(e),
+            'type': type(e).__name__
+        }
+        
+        return {
+            'messageVersion': '1.0',
+            'response': {
+                'actionGroup': event.get('actionGroup'),
+                'apiPath': event.get('apiPath'),
+                'httpMethod': 'POST',
+                'httpStatusCode': 500,
+                'responseBody': {
+                    'application/json': {
+                        'body': json.dumps(error_response)
+                    }
+                }
+            }
+        }
 EOF
-    filename = "index.js"
+    filename = "lambda_function.py"
   }
 }

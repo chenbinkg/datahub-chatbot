@@ -49,6 +49,33 @@ chmod +x build_and_deploy.sh
 ./build_and_deploy.sh dev ap-southeast-2
 ```
 
+## Step 3: Create Cognito User
+
+Create a user for authentication:
+
+```bash
+cd ../infra/2-chatbot-interface
+
+# Get User Pool ID
+USER_POOL_ID=$(terraform output -raw cognito_user_pool_id)
+
+# Create user
+aws cognito-idp admin-create-user \
+  --user-pool-id $USER_POOL_ID \
+  --username testuser \
+  --temporary-password TempPass123! \
+  --message-action SUPPRESS \
+  --region ap-southeast-2
+
+# Set permanent password
+aws cognito-idp admin-set-user-password \
+  --user-pool-id $USER_POOL_ID \
+  --username testuser \
+  --password MyPassword123! \
+  --permanent \
+  --region ap-southeast-2
+```
+
 ### Step 3: Verify Deployment
 
 Check the deployment status:

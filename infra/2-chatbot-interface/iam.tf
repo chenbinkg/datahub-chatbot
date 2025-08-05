@@ -116,7 +116,8 @@ resource "aws_iam_role_policy" "bedrock_access_ecs" {
       {
         Action = [
           "bedrock:*",
-          "bedrock-runtime:*"
+          "bedrock-runtime:*",
+          "bedrock-agent-runtime:*"
         ]
         Effect   = "Allow"
         Resource = "*"

@@ -113,10 +113,10 @@ The following parameters are managed by Terraform:
 - `/remote-mcp-server/bedrock-agent-id`
 - `/remote-mcp-server/bedrock-agent-alias-id`
 
-You can set these parameters when applying the Terraform configuration:
+You can set these parameters when planning the Terraform configuration:
 
 ```bash
-terraform apply -var="mongo_uri=mongodb://username:password@hostname:27017" -var="bedrock_agent_id=your-agent-id"
+terraform plan -var="mongo_uri=mongodb://username:password@hostname:27017" -var="bedrock_agent_id=your-agent-id"
 
 ## Outputs
 

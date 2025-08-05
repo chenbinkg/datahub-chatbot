@@ -51,5 +51,5 @@ output "bedrock_agent_id" {
 
 output "bedrock_agent_alias_id" {
   description = "The ID of the Bedrock Agent Alias"
-  value       = aws_bedrockagent_agent_alias.mcp_agent_alias.id
+  value       = aws_bedrockagent_agent_alias.mcp_agent_alias.agent_alias_id
 }

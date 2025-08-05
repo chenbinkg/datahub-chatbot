@@ -15,6 +15,7 @@ class MongoDBExternalMCP(BaseMCP):
             mcp_server_url: URL of the MongoDB MCP server
         """
         self.mcp_server_url = mcp_server_url or os.environ.get("MONGODB_MCP_SERVER_URL", "http://localhost:8001")
+        print(f"MongoDB External MCP initialized with URL: {self.mcp_server_url}")
         
     def process(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -38,8 +39,10 @@ class MongoDBExternalMCP(BaseMCP):
             }
             
             # Send the request to the MongoDB MCP server
+            url = f"{self.mcp_server_url}/api/v1/process"
+            print(f"Sending request to MongoDB MCP server at: {url}")
             response = requests.post(
-                f"{self.mcp_server_url}/api/v1/process",
+                url,
                 json=payload,
                 headers={"Content-Type": "application/json"}
             )
