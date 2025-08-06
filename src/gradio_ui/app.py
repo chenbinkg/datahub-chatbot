@@ -121,7 +121,76 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
                             elif 'trace' in event:
                                 # Check if this trace contains the final response
                                 trace = event.get('trace', {})
-                                print(f"Trace event: {trace}")
+                                orchestration_trace = trace.get('orchestrationTrace', {})
+                                
+                                # Look for model invocation output (agent's response)
+                                if 'modelInvocationOutput' in orchestration_trace:
+                                    model_output = orchestration_trace['modelInvocationOutput']
+                                    if 'rawResponse' in model_output:
+                                        raw_response = model_output['rawResponse']
+                                        if 'content' in raw_response:
+                                            # Extract the actual agent response content
+                                            agent_content = raw_response['content']
+                                            # Clean up the content by removing function calls and thinking tags
+                                            import re
+                                            # Remove <thinking> tags and content
+                                            agent_content = re.sub(r'<thinking>.*?</thinking>', '', agent_content, flags=re.DOTALL)
+                                            # Remove <function_calls> tags and content
+                                            agent_content = re.sub(r'<function_calls>.*?</function_calls>', '', agent_content, flags=re.DOTALL)
+                                            # Clean up extra whitespace
+                                            agent_content = agent_content.strip()
+                                            if agent_content:
+                                                result_text += agent_content
+                                                print(f"Found agent response: {agent_content}")
+                                
+                                # Look for action group invocation output (tool results)
+                                if 'observation' in orchestration_trace:
+                                    observation = orchestration_trace['observation']
+                                    if 'actionGroupInvocationOutput' in observation:
+                                        action_output = observation['actionGroupInvocationOutput']
+                                        if 'text' in action_output:
+                                            # Parse and format the Lambda response
+                                            try:
+                                                lambda_response = json.loads(action_output['text'])
+                                                if lambda_response.get('status') == 'success' and 'result' in lambda_response:
+                                                    result_data = lambda_response['result']
+                                                    
+                                                    # Handle different result formats
+                                                    if isinstance(result_data, list):
+                                                        # Direct array of documents (from find operations)
+                                                        count = len(result_data)
+                                                        result_text += f"\n\nFound {count} documents:\n```json\n{json.dumps(result_data[:3], indent=2)}\n```"
+                                                        if count > 3:
+                                                            result_text += f"\n... and {count - 3} more documents"
+                                                    elif isinstance(result_data, dict):
+                                                        # Object with specific keys
+                                                        if 'databases' in result_data:
+                                                            databases = result_data['databases']
+                                                            result_text += f"\n\nAvailable databases: {', '.join(databases)}"
+                                                        elif 'collections' in result_data:
+                                                            collections = result_data['collections']
+                                                            result_text += f"\n\nAvailable collections: {', '.join(collections)}"
+                                                        elif 'document' in result_data:
+                                                            document = result_data['document']
+                                                            result_text += f"\n\nDocument found:\n```json\n{json.dumps(document, indent=2)}\n```"
+                                                        elif 'documents' in result_data:
+                                                            documents = result_data['documents']
+                                                            count = result_data.get('count', len(documents))
+                                                            result_text += f"\n\nFound {count} documents:\n```json\n{json.dumps(documents[:3], indent=2)}\n```"
+                                                            if count > 3:
+                                                                result_text += f"\n... and {count - 3} more documents"
+                                                        else:
+                                                            result_text += f"\n\nQuery result:\n```json\n{json.dumps(result_data, indent=2)}\n```"
+                                                    else:
+                                                        # Single value or other format
+                                                        result_text += f"\n\nResult: {result_data}"
+                                                else:
+                                                    result_text += f"\n\nError: {lambda_response.get('message', 'Unknown error')}"
+                                            except json.JSONDecodeError:
+                                                result_text += f"\n\nRaw result: {action_output['text']}"
+                                            print(f"Found action group output: {action_output['text']}")
+                                
+                                # print(f"Trace event: {trace}")  # Comment out to reduce log noise
                     except Exception as stream_error:
                         print(f"Error processing stream: {stream_error}")
                         result_text = f"Stream processing error: {str(stream_error)}"

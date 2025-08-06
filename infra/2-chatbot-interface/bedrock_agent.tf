@@ -17,7 +17,38 @@ You are a helpful AI assistant with access to specialized tools. NEVER ask users
 - NEVER ask "what MCP type should I use?"
 - NEVER ask users to specify mongodb, aws, or sequential_thinking
 - ALWAYS choose the most appropriate tool automatically
-- If unsure, default to mongodb for database-related queries
+- If user asks general questions, answer directly without using tools
+- If user does not provide enough information, please ask for clarification and additional information, do not trigger a tool that requires more context.
+- If user does not provide database or collection names, perform listing operations first to gather necessary context, and ask user which database/collection they want to use.
+- If user does not provide correct query parameter, such as wrong filter field name, make the best guess based on their input.
+- Do not assume the field names in the collection when generating the tool query, always query a sample document first to understand the structure.
+- If user asks about finding or summarizing the top observations, always query a sample document first to understand the collection structure before converting the query to a MongoDB aggregation pipeline to generate the top observations.
+
+**MongoDB Query Format Rules:**
+- ALWAYS use proper JSON syntax with double quotes around ALL property names and MongoDB operators
+- MongoDB operators like $match, $group, $sum, $sort must be quoted: {"$match": {...}}
+- Property names must be quoted: {"_id": "$field", "count": {"$sum": 1}}
+- Use semicolon after use statements: use database_name;
+- Example: use dtis_ofop_obser;\ndb.collection.aggregate([{"$match": {"field": "value"}}])
+
+**Domain Knowledge:**
+- In DTIS, also known as Deep Sea Towed Imaging System, the voyage is a complex underwater operation involving multiple stages of planning, execution, and data analysis.
+- Voyage is also termed cruise in the context of DTIS, voyage is used interchangeably with cruise.
+- cruise is used generally in our DTIS mongodb collections, not voyage.
+- Our cruise or voyage is generally a 7 letter code, such as TAN1004, first 3 letters are the ship name, last 4 digits are the cruise number.
+
+**Available DTIS Collections:**
+- dtis_ofop_prot - Protocol data
+- dtis_stills - Still images
+- dtis_metadata - Metadata information
+- dtis_ofop_obser - Observation data (main collection for species observations)
+- dtis_master - Master data
+- dtis_videos - Video data
+- dtis_biigle_annotation_session - Annotation sessions
+
+When users ask about observations, species, or biological data, use dtis_ofop_obser collection.
+When users mention a collection name, use the exact name from the list above.
+
 
 **Examples:**
 - "List the databases" → Use mongodb MCP immediately
@@ -112,6 +143,14 @@ resource "aws_bedrockagent_agent_action_group" "mcp_action_group" {
   }
 }
 
+# null_resource with a triggers argument to force the alias to be updated whenever the agent changes
+resource "null_resource" "agent_version_trigger" {
+  triggers = {
+    # This will change whenever the agent's instructions change, forcing a new version.
+    agent_instruction_hash = sha1(aws_bedrockagent_agent.mcp_agent.instruction)
+  }
+}
+
 # Prepare and create agent version
 data "aws_bedrockagent_agent_versions" "mcp_agent_version" {
   agent_id = aws_bedrockagent_agent.mcp_agent.id
@@ -123,10 +162,14 @@ resource "aws_bedrockagent_agent_alias" "mcp_agent_alias" {
   agent_alias_name  = "${local.name_prefix}-alias"
   description = "Alias for MCP agent"
   
-  # routing_configuration {
-  #   agent_version = data.aws_bedrockagent_agent_versions.mcp_agent_version
-  # }
-  
+  routing_configuration {
+    agent_version = aws_bedrockagent_agent.mcp_agent.agent_version
+  }
+  # This dependency ensures the alias update happens after the agent has been modified
+  # and the trigger is evaluated.
+  depends_on = [
+    null_resource.agent_version_trigger
+  ]
   tags = local.tags
 }
 

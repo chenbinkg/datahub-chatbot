@@ -80,7 +80,7 @@ variable "task_memory" {
 
 variable "service_desired_count" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "mcp_service_desired_count" {
