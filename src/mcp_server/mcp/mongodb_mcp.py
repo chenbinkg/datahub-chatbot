@@ -141,6 +141,10 @@ class MongoDBMCP(BaseMCP):
                 if method_name == "findOne":
                     params["limit"] = 1
                 
+                # Check for chained .count() method
+                if '.count()' in query:
+                    params["operation"] = "count"
+                
                 # Check for chained .limit() method
                 limit_match = re.search(r'\.limit\((\d+)\)', query)
                 if limit_match:

@@ -28,6 +28,7 @@ You are a helpful AI assistant with access to specialized tools. NEVER ask users
 - ALWAYS use proper JSON syntax with double quotes around ALL property names and MongoDB operators
 - MongoDB operators like $match, $group, $sum, $sort must be quoted: {"$match": {...}}
 - Property names must be quoted: {"_id": "$field", "count": {"$sum": 1}}
+- For regex patterns, use {"$regex": "pattern", "$options": "i"} NOT /pattern/i
 - Use semicolon after use statements: use database_name;
 - Example: use dtis_ofop_obser;\ndb.collection.aggregate([{"$match": {"field": "value"}}])
 
@@ -35,15 +36,15 @@ You are a helpful AI assistant with access to specialized tools. NEVER ask users
 - In DTIS, also known as Deep Sea Towed Imaging System, the voyage is a complex underwater operation involving multiple stages of planning, execution, and data analysis.
 - Voyage is also termed cruise in the context of DTIS, voyage is used interchangeably with cruise.
 - cruise is used generally in our DTIS mongodb collections, not voyage.
-- Our cruise or voyage is generally a 7 letter code, such as TAN1004, first 3 letters are the ship name, last 4 digits are the cruise number.
+- Our cruise or voyage is generally a 7 letter code, such as TAN1004, TAN2206.
 
 **Available DTIS Collections:**
 - dtis_ofop_prot - Protocol data
-- dtis_stills - Still images
+- dtis_stills - Still images metadata
 - dtis_metadata - Metadata information
 - dtis_ofop_obser - Observation data (main collection for species observations)
-- dtis_master - Master data
-- dtis_videos - Video data
+- dtis_master - Master data with species list
+- dtis_videos - Video metadata data
 - dtis_biigle_annotation_session - Annotation sessions
 
 When users ask about observations, species, or biological data, use dtis_ofop_obser collection.
@@ -59,6 +60,11 @@ Provide direct, helpful responses by automatically selecting and using the right
 EOF
   
   idle_session_ttl_in_seconds = 1800
+  
+  memory_configuration {
+    enabled_memory_types = ["SESSION_SUMMARY"]
+    storage_days = 30
+  }
   
   tags = local.tags
 }
@@ -162,11 +168,9 @@ resource "aws_bedrockagent_agent_alias" "mcp_agent_alias" {
   agent_alias_name  = "${local.name_prefix}-alias"
   description = "Alias for MCP agent"
   
-  routing_configuration {
-    agent_version = aws_bedrockagent_agent.mcp_agent.agent_version
-  }
-  # This dependency ensures the alias update happens after the agent has been modified
-  # and the trigger is evaluated.
+  # Use default version to avoid Terraform provider issues
+  # The alias will automatically use the latest DRAFT version
+  
   depends_on = [
     null_resource.agent_version_trigger
   ]

@@ -190,6 +190,21 @@ terraform output alb_dns_name
    - Enter credentials and login
    - Switch to **Chat** tab to interact with MCP server
 
+5. **Password Management:**
+   
+   **Note**: Cognito Hosted UI is not available due to HTTP callback URL limitations.
+   
+   **For password changes, users must contact admin who can reset passwords:**
+   ```bash
+   # Admin resets user password
+   aws cognito-idp admin-set-user-password \
+     --user-pool-id $(terraform output -raw cognito_user_pool_id) \
+     --username user@example.com \
+     --password NewPassword123! \
+     --permanent \
+     --region ap-southeast-2
+   ```
+
 ## Local Development
 
 ### Test Docker Images Locally First:

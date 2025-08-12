@@ -58,3 +58,9 @@ output "bedrock_agent_version" {
   description = "The latest version of the Bedrock Agent"
   value       = aws_bedrockagent_agent.mcp_agent.agent_version
 }
+
+# Output for Cognito Hosted UI URL
+output "cognito_hosted_ui_url" {
+  description = "Cognito Hosted UI URL for user management"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+}
