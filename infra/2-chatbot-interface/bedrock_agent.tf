@@ -66,6 +66,13 @@ EOF
     storage_days = 30
   }
   
+  # Knowledge Base Configuration
+  knowledge_bases {
+    knowledge_base_id = aws_bedrockagent_knowledge_base.taxonomy_kb.id
+    description       = "DTIS taxonomy knowledge base for species identification"
+    knowledge_base_state = "ENABLED"
+  }
+  
   tags = local.tags
 }
 
