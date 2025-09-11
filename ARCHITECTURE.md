@@ -9,6 +9,7 @@ graph TB
     %% External Services
     User[👤 User]
     MongoDB[(🍃 MongoDB Atlas)]
+    LocalDev[💻 Local Development<br/>Taxonomy Data Upload]
     
     %% AWS Services
     subgraph "AWS Account"
@@ -29,17 +30,19 @@ graph TB
                     end
                 end
                 
-                Lambda[⚡ Lambda Function<br/>Bedrock Agent Handler]
+                Lambda[⚡ Lambda Function<br/>Bedrock Agent Handler<br/>+ Neptune Graph Queries]
+                NeptuneProxy[🌐 Neptune Proxy Lambda<br/>Public Function URL<br/>Graph Data Ingestion]
+                Neptune[(🔗 Neptune Serverless<br/>Taxonomy Graph Database<br/>Gremlin Queries)]
             end
         end
         
         %% AWS Managed Services
         Cognito[🔐 Cognito User Pool]
-        BedrockAgent[🤖 Bedrock Agent]
-        SSM[📋 Systems Manager<br/>Parameter Store]
+        BedrockAgent[🤖 Bedrock Agent<br/>GraphRAG Capabilities]
+        SSM[📋 Systems Manager<br/>Parameter Store<br/>+ Neptune Config]
         CloudWatch[📊 CloudWatch Logs]
         ECR[📦 Elastic Container Registry<br/>- MCP Server Image<br/>- Gradio UI Image]
-        S3[🪣 S3 Bucket<br/>Terraform State]
+        S3[🪣 S3 Bucket<br/>Terraform State<br/>+ Taxonomy Data]
     end
     
     %% External AI Services
@@ -49,6 +52,10 @@ graph TB
     User --> ALB
     ALB --> GradioTask
     
+    %% Taxonomy Data Upload Flow
+    LocalDev --> NeptuneProxy
+    NeptuneProxy --> Neptune
+    
     %% Internal Communication
     GradioTask --> Cognito
     GradioTask --> BedrockAgent
@@ -56,15 +63,20 @@ graph TB
     
     BedrockAgent --> Lambda
     Lambda --> MCPTask
+    Lambda --> Neptune
     
     MCPTask --> MongoDB
     MCPTask --> Bedrock
     MCPTask --> SSM
     
+    %% GraphRAG Flow
+    BedrockAgent -.-> |Taxonomy Queries| Neptune
+    
     %% Logging
     GradioTask --> CloudWatch
     MCPTask --> CloudWatch
     Lambda --> CloudWatch
+    NeptuneProxy --> CloudWatch
     
     %% Container Registry
     ECR --> GradioTask
@@ -79,7 +91,7 @@ graph TB
     classDef external fill:#4CAF50,stroke:#fff,stroke-width:2px,color:#fff
     classDef storage fill:#8E44AD,stroke:#fff,stroke-width:2px,color:#fff
     
-    class ALB,Cognito,BedrockAgent,SSM,CloudWatch,Lambda,Bedrock aws
+    class ALB,Cognito,BedrockAgent,SSM,CloudWatch,Lambda,Bedrock,Neptune,NeptuneProxy aws
     class GradioTask,MCPTask container
     class User,MongoDB external
     class ECR,S3 storage
@@ -99,14 +111,17 @@ graph TB
   - Sequential Thinking MCP for complex reasoning
 
 ### **AI/ML Layer**
-- **Bedrock Agent**: Orchestrates AI interactions
-- **Lambda Function**: Handles Bedrock agent requests
+- **Bedrock Agent**: Orchestrates AI interactions with GraphRAG capabilities
+- **Lambda Function**: Handles Bedrock agent requests + Neptune graph queries
 - **Amazon Bedrock**: Claude models for AI processing (cross-region)
+- **Neptune Serverless**: Graph database for taxonomy relationships
+- **Neptune Proxy Lambda**: Public endpoint for graph data ingestion
 
 ### **Data Layer**
-- **MongoDB Atlas**: External database
-- **SSM Parameter Store**: Configuration management
-- **S3**: Terraform state storage
+- **MongoDB Atlas**: External database for DTIS observations
+- **Neptune Serverless**: Graph database for taxonomy hierarchy
+- **SSM Parameter Store**: Configuration management + Neptune endpoints
+- **S3**: Terraform state storage + taxonomy data
 
 ### **Security & Networking**
 - **VPC**: Isolated network environment
@@ -124,8 +139,19 @@ graph TB
 
 1. **Containerized Architecture**: All applications run in Docker containers
 2. **Serverless Compute**: ECS Fargate eliminates server management
-3. **Cross-Region AI**: Bedrock models accessible from different regions
-4. **Centralized Configuration**: SSM Parameter Store for all settings
-5. **Infrastructure as Code**: Terraform manages all resources
-6. **Secure Networking**: Private subnets with controlled access
-7. **Scalable Design**: Auto-scaling containers based on demand
+3. **GraphRAG Integration**: Neptune Serverless for taxonomy knowledge graphs
+4. **Cross-Region AI**: Bedrock models accessible from different regions
+5. **Hybrid Data Access**: MongoDB for observations + Neptune for taxonomy
+6. **External Data Ingestion**: Public Lambda proxy for graph data upload
+7. **Centralized Configuration**: SSM Parameter Store for all settings
+8. **Infrastructure as Code**: Terraform manages all resources
+9. **Secure Networking**: Private subnets with controlled access
+10. **Scalable Design**: Auto-scaling containers based on demand
+
+## GraphRAG Workflow
+
+1. **Data Upload**: Local machine uploads taxonomy JSON via Neptune Proxy Lambda
+2. **Graph Building**: Proxy Lambda creates nodes and relationships in Neptune
+3. **Query Processing**: Bedrock Agent automatically routes taxonomy queries to Neptune
+4. **Graph Traversal**: Lambda executes Gremlin queries for parent/child relationships
+5. **Response Generation**: Agent combines graph data with AI responses

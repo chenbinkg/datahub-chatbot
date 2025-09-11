@@ -34,6 +34,13 @@ The infrastructure consists of the following components:
 - AWS CLI configured with appropriate permissions
 - SSH key pair for EC2 instance
 
+### Update Lambda Package
+Run the following at the main repo directory:
+```
+function_name="mcp_agent" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
+function_name="neptune_proxy" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
+```
+
 ### Deployment
 
 1. Initialize Terraform with S3 backend:

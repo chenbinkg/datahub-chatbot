@@ -35,7 +35,9 @@ terraform apply plan.tfplan
 - ECS Fargate cluster and services
 - ECR repositories for containers
 - Cognito User Pool and Client
-- Bedrock Agent and Alias
+- Bedrock Agent and Alias with Knowledge Base
+- Neptune Analytics Graph for taxonomy
+- S3 bucket for knowledge base documents
 - All necessary networking and IAM roles
 
 ## Step 3: Build and Deploy Containers
@@ -172,7 +174,30 @@ aws cognito-idp admin-set-user-password \
 
 ```
 
-## Step 5: Access the Application
+## Step 5: Setup Taxonomy Knowledge Base
+
+Upload DTIS taxonomy data to the GraphRAG knowledge base:
+
+```bash
+cd dtis_ontology
+
+# Upload taxonomy data to knowledge base
+python upload_taxonomy_to_kb.py
+
+# Check ingestion status
+KB_ID=$(cd ../infra/2-chatbot-interface && terraform output -raw knowledge_base_id)
+aws bedrock-agent list-ingestion-jobs --knowledge-base-id $KB_ID --region ap-southeast-2
+
+# Test knowledge base
+aws bedrock-agent-runtime retrieve \
+  --knowledge-base-id $KB_ID \
+  --retrieval-query '{"text": "What is Stylasteridae?"}' \
+  --region ap-southeast-2
+```
+
+**Note**: Ingestion may take 5-10 minutes. The chatbot will have enhanced taxonomy knowledge once complete.
+
+## Step 6: Access the Application
 
 1. Get the ALB DNS name:
 ```bash
@@ -189,6 +214,7 @@ terraform output alb_dns_name
    - Click **Login** tab first
    - Enter credentials and login
    - Switch to **Chat** tab to interact with MCP server
+   - Ask taxonomy questions like "What is Stylasteridae?" to test knowledge base
 
 5. **Password Management:**
    
@@ -391,7 +417,27 @@ aws ssm put-parameter \
   --region ap-southeast-2
 ```
 
-10. **MCP Server Node.js/Python Dependency Errors**:
+10. **Knowledge Base Issues**:
+```bash
+# Check knowledge base status
+KB_ID=$(terraform output -raw knowledge_base_id)
+aws bedrock-agent get-knowledge-base --knowledge-base-id $KB_ID --region ap-southeast-2
+
+# Check ingestion jobs
+aws bedrock-agent list-ingestion-jobs --knowledge-base-id $KB_ID --region ap-southeast-2
+
+# Re-upload taxonomy data if needed
+cd dtis_ontology
+python upload_taxonomy_to_kb.py
+
+# Test knowledge base retrieval
+aws bedrock-agent-runtime retrieve \
+  --knowledge-base-id $KB_ID \
+  --retrieval-query '{"text": "taxonomy hierarchy"}' \
+  --region ap-southeast-2
+```
+
+11. **MCP Server Node.js/Python Dependency Errors**:
 ```bash
 # Error: Node.js version too old or missing Python modules
 # Check MCP server logs

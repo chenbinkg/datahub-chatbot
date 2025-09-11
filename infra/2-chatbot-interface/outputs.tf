@@ -64,3 +64,9 @@ output "cognito_hosted_ui_url" {
   description = "Cognito Hosted UI URL for user management"
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
 }
+
+# Output the function URL
+output "neptune_proxy_url" {
+  description = "Neptune Proxy Lambda Function URL"
+  value       = aws_lambda_function_url.neptune_proxy.function_url
+}

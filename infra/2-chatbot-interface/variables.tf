@@ -111,4 +111,8 @@ variable "mongo_db" {
   default     = "data_platform"
 }
 
+variable "sagemaker_vpc_cidr" {
+  type    = string
+  default = "192.168.0.0/16"
+}
 # Bedrock agent and alias IDs are now created by Terraform
