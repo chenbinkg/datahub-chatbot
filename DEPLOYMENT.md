@@ -36,7 +36,7 @@ terraform apply plan.tfplan
 - ECR repositories for containers
 - Cognito User Pool and Client
 - Bedrock Agent and Alias with Knowledge Base
-- Neptune Analytics Graph for taxonomy
+<!-- - Neptune Analytics Graph for taxonomy -->
 - S3 bucket for knowledge base documents
 - All necessary networking and IAM roles
 

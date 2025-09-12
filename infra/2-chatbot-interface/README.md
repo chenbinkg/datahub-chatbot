@@ -47,6 +47,7 @@ function_name="neptune_proxy" path_cwd="$PWD/lambda" runtime="python3" bash lamb
 
 ```bash
 cd infra/2-chatbot-interface
+source .env.dev
 export PROJECT_CODE=FPEI2606
 export PROJECT_NAME=data-platform-mcp
 export ENVIRONMENT=dev
@@ -57,7 +58,7 @@ terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCO
 2. Review the plan:
 
 ```bash
-terraform plan -out=plan.tfplan -var="environment=${ENVIRONMENT}" -var="mongo_uri=your-mongodb-uri" -var="mongo_db=data_platform"
+terraform plan -out=plan.tfplan -var="environment=${ENVIRONMENT}" -var="mongo_uri=${MONGODB_URI}" -var="mongo_db=${MONGODB_DB}"
 ```
 
 3. Apply the changes:

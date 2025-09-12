@@ -143,13 +143,13 @@ resource "aws_iam_role_policy" "lambda_mcp_access" {
         Effect   = "Allow"
         Resource = "arn:aws:ssm:*:*:parameter/remote-mcp-server/*"
       },
-      {
-        Action = [
-          "neptune-db:*"
-        ]
-        Effect   = "Allow"
-        Resource = "${aws_neptune_cluster.taxonomy_graph.arn}/*"
-      }
+      # {
+      #   Action = [
+      #     "neptune-db:*"
+      #   ]
+      #   Effect   = "Allow"
+      #   Resource = "${aws_neptune_cluster.taxonomy_graph.arn}/*"
+      # }
     ]
   })
 }

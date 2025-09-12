@@ -18,6 +18,7 @@ tf_output*
 **/auth_env_vars
 **.env*
 .kiro*
+.infracost*
 error.txt
 success.txt
 sync_logs.txt

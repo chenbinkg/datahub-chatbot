@@ -54,19 +54,13 @@ output "bedrock_agent_alias_id" {
   value       = aws_bedrockagent_agent_alias.mcp_agent_alias.agent_alias_id
 }
 
-output "bedrock_agent_version" {
-  description = "The latest version of the Bedrock Agent"
-  value       = aws_bedrockagent_agent.mcp_agent.agent_version
-}
+# output "bedrock_agent_version" {
+#   description = "The latest version of the Bedrock Agent"
+#   value       = data.aws_bedrockagent_agent_versions.test.agent_version
+# }
 
 # Output for Cognito Hosted UI URL
 output "cognito_hosted_ui_url" {
   description = "Cognito Hosted UI URL for user management"
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
-}
-
-# Output the function URL
-output "neptune_proxy_url" {
-  description = "Neptune Proxy Lambda Function URL"
-  value       = aws_lambda_function_url.neptune_proxy.function_url
 }
