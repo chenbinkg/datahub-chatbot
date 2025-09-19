@@ -56,7 +56,7 @@ MONGO_DB               # MongoDB database name
 - ECS Fargate cluster and services
 - Application Load Balancer
 - ECR repositories
-- Lambda functions (MCP Agent, Neptune Proxy)
+- Lambda functions (MCP Agent)
 - Bedrock Agent with Knowledge Base
 - Cognito User Pool for authentication
 - IAM roles and policies
@@ -68,11 +68,6 @@ MONGO_DB               # MongoDB database name
 - Handles Bedrock Agent requests
 - Routes queries to MCP server
 - Supports multiple MCP types (mongodb, aws, sequential_thinking)
-
-**Neptune Proxy** (`lambda/lambda_functions/neptune_proxy/`)
-- Manages Neptune Analytics graph operations
-- Loads taxonomy data
-- Executes graph queries
 
 ### Container Services
 
@@ -186,7 +181,6 @@ aws logs tail /ecs/data-platform-mcp-dev-mcp-server --follow
 - `/ecs/data-platform-mcp-dev-mcp-server`
 - `/ecs/data-platform-mcp-dev-gradio-ui`
 - `/aws/lambda/data-platform-mcp-dev-mcp-agent`
-- `/aws/lambda/data-platform-mcp-dev-neptune-proxy`
 
 **ECS Service Monitoring**:
 ```bash

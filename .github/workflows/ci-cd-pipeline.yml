@@ -62,8 +62,7 @@ jobs:
         run: |
           # Package MCP Agent Lambda
           function_name="mcp_agent" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
-          # Package Neptune Proxy Lambda
-          function_name="neptune_proxy" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
+
       - name: Upload Lambda Packages
         uses: actions/upload-artifact@v4
         with:
@@ -122,7 +121,8 @@ jobs:
         working-directory: infra/2-chatbot-interface
         run: |
           export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          terraform init -backend-config="bucket=${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-${AWS_ACCOUNT_ID}-terraform-state" \
+          terraform init -reconfigure \
+                         -backend-config="bucket=${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-${AWS_ACCOUNT_ID}-terraform-state" \
                          -backend-config="key=${{ env.PROJECT_CODE }}/${{ env.PROJECT_NAME }}/${{ env.ENVIRONMENT }}.tfstate"
           terraform plan -out=plan.tfplan \
             -var="environment=${{ env.ENVIRONMENT }}" \

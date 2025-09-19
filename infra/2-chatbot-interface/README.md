@@ -38,7 +38,6 @@ The infrastructure consists of the following components:
 Run the following at the main repo directory:
 ```
 function_name="mcp_agent" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
-function_name="neptune_proxy" path_cwd="$PWD/lambda" runtime="python3" bash lambda/scripts/create_pkg.sh
 ```
 
 ### Deployment
