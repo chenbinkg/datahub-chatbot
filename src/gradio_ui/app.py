@@ -71,9 +71,10 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
             ],
             value="mongodb"
         )
+        verbose_mode = gr.Checkbox(label="Show Reasoning", value=False)
         clear = gr.Button("Clear")
         
-        def respond(message, chat_history, token, mcp_type):
+        def respond(message, chat_history, token, mcp_type, verbose):
             if not token:
                 return chat_history + [{"role": "assistant", "content": "Please login first"}], ""
             
@@ -83,7 +84,7 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
             # Get response from MCP server via Bedrock agent
             try:
                 print(f"Invoking Bedrock Agent - ID: {BEDROCK_AGENT_ID}, Alias: {BEDROCK_AGENT_ALIAS_ID}")
-                print(f"Message: {message}, MCP Type: {mcp_type}")
+                print(f"Message: {message}, MCP Type: {mcp_type}, Show Reasoning: {verbose}")
                 
                 # Send message directly - let agent decide if MCP tools are needed
                 enhanced_message = message
@@ -105,6 +106,7 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
                 # Extract response text from Bedrock agent response
                 # Bedrock agent returns streaming response, need to read it properly
                 result_text = ""
+                reasoning_steps = []
                 print(f"Full Bedrock response: {response}")
                 
                 if 'completion' in response:
@@ -120,80 +122,65 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
                                     result_text += chunk_text
                             elif 'trace' in event:
                                 # Check if this trace contains the final response
-                                trace = event.get('trace', {})
-                                orchestration_trace = trace.get('orchestrationTrace', {})
+                                trace_outer = event.get('trace', {})
+                                trace_inner = trace_outer.get('trace', {})
+                                orchestration_trace = trace_inner.get('orchestrationTrace', {})
                                 
-                                # Look for model invocation output (agent's response)
-                                if 'modelInvocationOutput' in orchestration_trace:
+                                # Capture reasoning steps for verbose mode
+                                if verbose and 'modelInvocationOutput' in orchestration_trace:
                                     model_output = orchestration_trace['modelInvocationOutput']
-                                    if 'rawResponse' in model_output:
-                                        raw_response = model_output['rawResponse']
-                                        if 'content' in raw_response:
-                                            # Extract the actual agent response content
-                                            agent_content = raw_response['content']
-                                            # Clean up the content by removing function calls and thinking tags
-                                            import re
-                                            # Remove <thinking> tags and content
-                                            agent_content = re.sub(r'<thinking>.*?</thinking>', '', agent_content, flags=re.DOTALL)
-                                            # Remove <function_calls> tags and content
-                                            agent_content = re.sub(r'<function_calls>.*?</function_calls>', '', agent_content, flags=re.DOTALL)
-                                            # Clean up extra whitespace
-                                            agent_content = agent_content.strip()
-                                            if agent_content:
-                                                result_text += agent_content
-                                                print(f"Found agent response: {agent_content}")
+                                    if 'rawResponse' in model_output and 'content' in model_output['rawResponse']:
+                                        content_json = json.loads(model_output['rawResponse']['content'])
+                                        content_array = content_json.get("content", [])
+                                        # Extract thinking content from the content array
+                                        import re
+                                        # print("content array length: ", len(content_array))
+                                        if content_array:
+                                            for content_item in content_array:
+                                                if 'text' in content_item:
+                                                    text_content = content_item.get("text", "")
+                                                    # print(f"Text content: {text_content}")
+                                                    if text_content:
+                                                        if '</thinking>' in text_content:
+                                                            thinking_match = re.search(r'<thinking>(.*?)</thinking>', text_content, re.DOTALL)
+                                                            if thinking_match:
+                                                                thinking_text = thinking_match.group(1).strip()
+                                                                reasoning_steps.append(f"🤔 **Agent Thinking**: {thinking_text}")
+                                                                # print(f"Thinking text: {thinking_text}")
+                                                        if '</answer>' in text_content:
+                                                            answer_match = re.search(r'<answer>(.*?)</answer>', text_content, re.DOTALL)
+                                                            if answer_match:
+                                                                answer_text = answer_match.group(1).strip()
+                                                                reasoning_steps.append(f"💡 **Agent Answer**: {answer_text[:100]}...")
+                                                                # print(f"Answer text: {answer_text}")
+
                                 
-                                # Look for action group invocation output (tool results)
-                                if 'observation' in orchestration_trace:
+                                # Capture tool results for verbose mode
+                                if verbose and 'observation' in orchestration_trace:
                                     observation = orchestration_trace['observation']
                                     if 'actionGroupInvocationOutput' in observation:
                                         action_output = observation['actionGroupInvocationOutput']
                                         if 'text' in action_output:
-                                            # Parse and format the Lambda response
                                             try:
-                                                lambda_response = json.loads(action_output['text'])
-                                                if lambda_response.get('status') == 'success' and 'result' in lambda_response:
-                                                    result_data = lambda_response['result']
-                                                    
-                                                    # Handle different result formats
-                                                    if isinstance(result_data, list):
-                                                        # Direct array of documents (from find operations)
-                                                        count = len(result_data)
-                                                        result_text += f"\n\nFound {count} documents:\n```json\n{json.dumps(result_data[:3], indent=2)}\n```"
-                                                        if count > 3:
-                                                            result_text += f"\n... and {count - 3} more documents"
-                                                    elif isinstance(result_data, dict):
-                                                        # Object with specific keys
-                                                        if 'databases' in result_data:
-                                                            databases = result_data['databases']
-                                                            result_text += f"\n\nAvailable databases: {', '.join(databases)}"
-                                                        elif 'collections' in result_data:
-                                                            collections = result_data['collections']
-                                                            result_text += f"\n\nAvailable collections: {', '.join(collections)}"
-                                                        elif 'document' in result_data:
-                                                            document = result_data['document']
-                                                            result_text += f"\n\nDocument found:\n```json\n{json.dumps(document, indent=2)}\n```"
-                                                        elif 'documents' in result_data:
-                                                            documents = result_data['documents']
-                                                            count = result_data.get('count', len(documents))
-                                                            result_text += f"\n\nFound {count} documents:\n```json\n{json.dumps(documents[:3], indent=2)}\n```"
-                                                            if count > 3:
-                                                                result_text += f"\n... and {count - 3} more documents"
-                                                        else:
-                                                            result_text += f"\n\nQuery result:\n```json\n{json.dumps(result_data, indent=2)}\n```"
-                                                    else:
-                                                        # Single value or other format
-                                                        result_text += f"\n\nResult: {result_data}"
+                                                tool_result = json.loads(action_output['text'])
+                                                print("Tool result:", tool_result)
+                                                if tool_result.get('status') == 'success':
+                                                    result_data = tool_result.get('result', {})
+                                                    reasoning_steps.append(f"✅ **Tool Result**: {str(result_data)[:100]}...")
                                                 else:
-                                                    result_text += f"\n\nError: {lambda_response.get('message', 'Unknown error')}"
-                                            except json.JSONDecodeError:
-                                                result_text += f"\n\nRaw result: {action_output['text']}"
-                                            print(f"Found action group output: {action_output['text']}")
+                                                    reasoning_steps.append(f"❌ **Tool Error**: {tool_result.get('message', 'Unknown error')}")
+                                            except:
+                                                reasoning_steps.append(f"📄 **Tool Output**: {action_output['text'][:100]}...")
                                 
                                 # print(f"Trace event: {trace}")  # Comment out to reduce log noise
                     except Exception as stream_error:
                         print(f"Error processing stream: {stream_error}")
                         result_text = f"Stream processing error: {str(stream_error)}"
+                    
+                    # Add reasoning steps if verbose mode is enabled
+                    if verbose and reasoning_steps:
+                        reasoning_text = "\n\n**🔍 Reasoning Process:**\n" + "\n".join(reasoning_steps) + "\n\n---\n\n"
+                        result_text = reasoning_text + result_text
                     
                     result = result_text if result_text else "No response from agent"
                 else:
@@ -214,7 +201,7 @@ with gr.Blocks(title="Data Platform Chatbot") as demo:
             
             return chat_history, ""
         
-        msg.submit(respond, [msg, chatbot, token_state, mcp_type], [chatbot, msg])
+        msg.submit(respond, [msg, chatbot, token_state, mcp_type, verbose_mode], [chatbot, msg])
         clear.click(lambda: None, None, chatbot, queue=False)
         
     login_button.click(
