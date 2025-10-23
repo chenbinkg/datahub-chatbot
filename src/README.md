@@ -75,27 +75,6 @@ aws ecs update-service --cluster <cluster-name> --service <service-name> --force
 2. Log in using Cognito credentials
 3. Start chatting with the interface to query the MongoDB database
 
-## Adding New MCP Servers
-
-To add a new MCP server:
-
-1. Create a new MCP class in `src/mcp_server/mcp/`
-2. Update the main.py file to include the new MCP
-3. Deploy the updated code to the EC2 instance
-
 ## Cross-Region Bedrock Inference
 
 This infrastructure supports cross-region inference with AWS Bedrock models. The IAM policies are configured to allow access to Bedrock services in any region. This is necessary because certain models like Claude are only available in specific regions (e.g., us-east-1).
-
-When using the Sequential Thinking MCP, you can specify the region in the parameters:
-
-```json
-{
-  "query": "Your query here",
-  "mcp_type": "sequential_thinking",
-  "parameters": {
-    "model_id": "anthropic.claude-sonnet-4-20250514-v1:0",
-    "region": "us-east-1"
-  }
-}
-```
