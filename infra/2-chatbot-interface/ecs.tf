@@ -44,6 +44,10 @@ resource "aws_ecs_task_definition" "gradio_ui" {
         {
           name  = "AWS_REGION"
           value = var.aws_region
+        },
+        {
+          name  = "PYTHONUNBUFFERED"
+          value = "1"
         }
       ]
       logConfiguration = {

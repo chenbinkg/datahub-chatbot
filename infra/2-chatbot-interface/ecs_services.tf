@@ -1,11 +1,9 @@
-# CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "mcp_server" {
   name              = "/ecs/${local.name_prefix}-mcp-server"
   retention_in_days = 30
   tags              = local.tags
 }
 
-# MCP Server Task Definition
 resource "aws_ecs_task_definition" "mcp_server" {
   family                   = "${local.name_prefix}-mcp-server"
   network_mode             = "awsvpc"
@@ -38,6 +36,10 @@ resource "aws_ecs_task_definition" "mcp_server" {
         {
           name  = "MONGO_URI"
           value = var.mongo_uri
+        },
+        {
+          name  = "NODE_ENV"
+          value = "production"
         }
       ]
       logConfiguration = {
@@ -54,7 +56,6 @@ resource "aws_ecs_task_definition" "mcp_server" {
   tags = local.tags
 }
 
-# MCP Server Service
 resource "aws_ecs_service" "mcp_server" {
   name            = "${local.name_prefix}-mcp-server"
   cluster         = aws_ecs_cluster.main.id
@@ -74,15 +75,13 @@ resource "aws_ecs_service" "mcp_server" {
     container_port   = 8000
   }
 
-  # Temporarily disabled port 8001 ALB registration to stop health check failures
-  # The MongoDB MCP server is still running on port 8001, just not load balanced
-  # load_balancer {
-  #   target_group_arn = aws_lb_target_group.mongodb_mcp_server.arn
-  #   container_name   = "mcp-server-${var.environment}"
-  #   container_port   = 8001
-  # }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.mongodb_mcp_server.arn
+    container_name   = "mcp-server-${var.environment}"
+    container_port   = 8001
+  }
 
-  depends_on = [aws_lb_listener.mcp_server]
+  depends_on = [aws_lb_listener.mcp_server, aws_lb_listener.mongodb_mcp_server]
 
   tags = local.tags
 }

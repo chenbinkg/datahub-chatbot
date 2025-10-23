@@ -91,14 +91,29 @@ resource "aws_security_group" "mcp_server" {
     from_port       = 8000
     to_port         = 8000
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id, aws_security_group.lambda.id, aws_security_group.alb.id]
+    security_groups = [
+      aws_security_group.ecs.id, 
+      aws_security_group.alb.id
+      ]
   }
 
   ingress {
     from_port       = 8001
     to_port         = 8001
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id, aws_security_group.lambda.id]
+    security_groups = [
+      aws_security_group.ecs.id,
+      aws_security_group.alb.id
+      ]
+  }
+
+  ingress {
+    from_port       = 8002
+    to_port         = 8002
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.alb.id
+      ]
   }
 
   egress {

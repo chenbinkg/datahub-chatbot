@@ -77,7 +77,7 @@ MONGO_DB               # MongoDB database name
 - Supports HTTP and WebSocket transports
 - Runs on ECS Fargate (port 8000, 8001)
 
-**Gradio UI** (`src/gradio_ui/`)
+**Gradio UI** (`src/unified_app/`)
 - Web interface for chatbot interaction
 - Cognito authentication integration
 - Bedrock Agent communication
@@ -121,15 +121,15 @@ The pipeline uses these environment variables:
 AWS_REGION: ap-southeast-2
 ENVIRONMENT: dev
 PROJECT_CODE: FPEI2606
-PROJECT_NAME: data-platform-mcp
+PROJECT_NAME: datahub-mcp
 ```
 
 Resource naming follows the pattern: `{PROJECT_NAME}-{ENVIRONMENT}-{RESOURCE_TYPE}`
 
 Examples:
-- ECS Cluster: `data-platform-mcp-dev-cluster`
-- ECR Repository: `data-platform-mcp-dev-mcp-server`
-- S3 Bucket: `data-platform-mcp-dev-{ACCOUNT_ID}-terraform-state`
+- ECS Cluster: `datahub-mcp-dev-cluster`
+- ECR Repository: `datahub-mcp-dev-mcp-server`
+- S3 Bucket: `datahub-mcp-dev-{ACCOUNT_ID}-terraform-state`
 
 ## Deployment Validation
 
@@ -161,10 +161,10 @@ aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS
 **ECS Service Issues**
 ```bash
 # Check service status
-aws ecs describe-services --cluster data-platform-mcp-dev-cluster --services data-platform-mcp-dev-mcp-server
+aws ecs describe-services --cluster datahub-mcp-dev-cluster --services datahub-mcp-dev-mcp-server
 
 # View logs
-aws logs tail /ecs/data-platform-mcp-dev-mcp-server --follow
+aws logs tail /ecs/datahub-mcp-dev-mcp-server --follow
 ```
 
 ### Pipeline Failures
@@ -178,17 +178,17 @@ aws logs tail /ecs/data-platform-mcp-dev-mcp-server --follow
 ## Monitoring and Logs
 
 **CloudWatch Logs**:
-- `/ecs/data-platform-mcp-dev-mcp-server`
-- `/ecs/data-platform-mcp-dev-gradio-ui`
-- `/aws/lambda/data-platform-mcp-dev-mcp-agent`
+- `/ecs/datahub-mcp-dev-mcp-server`
+- `/ecs/datahub-mcp-dev-gradio-ui`
+- `/aws/lambda/datahub-mcp-dev-mcp-agent`
 
 **ECS Service Monitoring**:
 ```bash
 # Service status
-aws ecs describe-services --cluster data-platform-mcp-dev-cluster --services data-platform-mcp-dev-mcp-server data-platform-mcp-dev-gradio-ui
+aws ecs describe-services --cluster datahub-mcp-dev-cluster --services datahub-mcp-dev-mcp-server datahub-mcp-dev-gradio-ui
 
 # Task status
-aws ecs list-tasks --cluster data-platform-mcp-dev-cluster --service-name data-platform-mcp-dev-mcp-server
+aws ecs list-tasks --cluster datahub-mcp-dev-cluster --service-name datahub-mcp-dev-mcp-server
 ```
 
 ## Security Considerations

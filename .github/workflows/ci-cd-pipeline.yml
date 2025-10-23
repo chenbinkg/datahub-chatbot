@@ -12,7 +12,7 @@ env:
   AWS_REGION: ap-southeast-2
   ENVIRONMENT: dev
   PROJECT_CODE: FPEI2606
-  PROJECT_NAME: data-platform-mcp
+  PROJECT_NAME: datahub-mcp
 
 jobs:
   # Security and Quality Checks

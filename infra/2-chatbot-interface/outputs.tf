@@ -44,15 +44,15 @@ output "public_subnets" {
   value       = module.vpc.public_subnets
 }
 
-output "bedrock_agent_id" {
-  description = "The ID of the Bedrock Agent"
-  value       = aws_bedrockagent_agent.mcp_agent.id
-}
+# output "bedrock_agent_id" {
+#   description = "The ID of the Bedrock Agent"
+#   value       = aws_bedrockagent_agent.mcp_agent.id
+# }
 
-output "bedrock_agent_alias_id" {
-  description = "The ID of the Bedrock Agent Alias"
-  value       = aws_bedrockagent_agent_alias.mcp_agent_alias.agent_alias_id
-}
+# output "bedrock_agent_alias_id" {
+#   description = "The ID of the Bedrock Agent Alias"
+#   value       = aws_bedrockagent_agent_alias.mcp_agent_alias.agent_alias_id
+# }
 
 # output "bedrock_agent_version" {
 #   description = "The latest version of the Bedrock Agent"

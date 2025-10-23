@@ -32,7 +32,6 @@ resource "aws_lb_target_group" "gradio_ui" {
   tags = local.tags
 }
 
-# Target group for MCP server
 resource "aws_lb_target_group" "mcp_server" {
   name        = "${local.name_prefix}-mcp-tg"
   port        = 8000
@@ -44,7 +43,7 @@ resource "aws_lb_target_group" "mcp_server" {
     enabled             = true
     interval            = 30
     path                = "/health"
-    port                = "traffic-port"
+    port                = "8002"
     healthy_threshold   = 3
     unhealthy_threshold = 3
     timeout             = 5
@@ -65,7 +64,6 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# Target group for MongoDB MCP server (port 8001)
 resource "aws_lb_target_group" "mongodb_mcp_server" {
   name        = "${local.name_prefix}-mongo-tg"
   port        = 8001
@@ -76,18 +74,17 @@ resource "aws_lb_target_group" "mongodb_mcp_server" {
   health_check {
     enabled             = true
     interval            = 30
-    path                = "/"
-    port                = "traffic-port"
+    path                = "/health"
+    port                = "8002"
     healthy_threshold   = 2
     unhealthy_threshold = 5
     timeout             = 10
-    matcher             = "200-499"
+    matcher             = "200-299"
   }
 
   tags = local.tags
 }
 
-# Listener for MCP server (port 8000)
 resource "aws_lb_listener" "mcp_server" {
   load_balancer_arn = aws_lb.main.arn
   port              = 8000
@@ -99,7 +96,6 @@ resource "aws_lb_listener" "mcp_server" {
   }
 }
 
-# Listener for MongoDB MCP server (port 8001)
 resource "aws_lb_listener" "mongodb_mcp_server" {
   load_balancer_arn = aws_lb.main.arn
   port              = 8001

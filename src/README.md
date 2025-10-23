@@ -46,7 +46,7 @@ The infrastructure is managed using Terraform and includes:
 ```bash
 cd infra/2-chatbot-interface
 export PROJECT_CODE=FPEI2606
-export PROJECT_NAME=data-platform-mcp
+export PROJECT_NAME=datahub-mcp
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"

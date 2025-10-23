@@ -1,4 +1,3 @@
-# ECR Repository for MCP Server
 resource "aws_ecr_repository" "mcp_server" {
   name                 = "${local.name_prefix}-mcp-server"
   image_tag_mutability = "MUTABLE"

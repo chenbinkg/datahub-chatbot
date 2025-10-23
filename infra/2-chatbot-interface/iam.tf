@@ -50,7 +50,7 @@ resource "aws_iam_role_policy" "ssm_access" {
           "ssm:PutParameter"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:ssm:*:*:parameter/remote-mcp-server/*"
+        Resource = "arn:aws:ssm:*:*:parameter/datahub-mcp/*"
       },
     ]
   })
@@ -138,7 +138,7 @@ resource "aws_iam_role_policy" "ssm_access_ecs" {
           "ssm:GetParameter"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:ssm:*:*:parameter/remote-mcp-server/*"
+        Resource = "arn:aws:ssm:*:*:parameter/datahub-mcp/*"
       },
     ]
   })

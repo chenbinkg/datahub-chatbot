@@ -1,0 +1,18 @@
+{
+  "name": "mcp-servers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node /app/start.sh"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "@mongodb-js/mongodb-mcp-server": "*"
+  },
+  "overrides": {
+    "openid-client": "5.3.2"
+  }
+}

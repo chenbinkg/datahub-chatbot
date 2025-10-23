@@ -2,88 +2,68 @@
 
 ## Overview
 
-This diagram shows the containerized architecture deployed on AWS using ECS Fargate.
+This diagram shows the containerized architecture deployed on AWS using ECS Fargate with Strands Agent integration.
 
 ```mermaid
 graph TB
     %% External Services
     User[👤 User]
     MongoDB[(🍃 MongoDB Atlas)]
-    LocalDev[💻 Local Development<br/>Taxonomy Data Upload]
     
     %% AWS Services
     subgraph "AWS Account"
         subgraph "VPC"
             subgraph "Public Subnets"
-                ALB[🔄 Application Load Balancer]
+                ALB[🔄 Application Load Balancer<br/>Port 80: Gradio UI<br/>Port 8000: MongoDB MCP<br/>Port 8001: S3 MCP]
                 NAT[🌐 NAT Gateway]
             end
             
             subgraph "Private Subnets"
                 subgraph "ECS Fargate Cluster"
-                    subgraph "Gradio UI Service"
-                        GradioTask[📱 Gradio UI Container<br/>Port: 7860]
+                    subgraph "Unified App Service"
+                        UnifiedTask[📱 Unified App Container<br/>Port: 7860<br/>- Gradio UI<br/>- Strands Agent<br/>- BedrockModel<br/>- Real-time Streaming]
                     end
                     
-                    subgraph "MCP Server Service"
-                        MCPTask[🔧 MCP Server Container<br/>Port: 8000 & 8001<br/>- Custom MCP<br/>- MongoDB MCP<br/>- AWS MCP<br/>- Sequential Thinking MCP]
+                    subgraph "MCP Servers Service"
+                        MCPTask[🔧 MCP Servers Container<br/>Port 8000: MongoDB MCP<br/>Port 8001: S3 Presigned URL<br/>Port 8002: Health Check<br/>- Official MongoDB MCP<br/>- Custom S3 MCP]
                     end
                 end
-                
-                Lambda[⚡ Lambda Function<br/>Bedrock Agent Handler<br/>+ Neptune Graph Queries]
-                NeptuneProxy[🌐 Neptune Proxy Lambda<br/>Public Function URL<br/>Graph Data Ingestion]
-                Neptune[(🔗 Neptune Serverless<br/>Taxonomy Graph Database<br/>Gremlin Queries)]
             end
         end
         
         %% AWS Managed Services
         Cognito[🔐 Cognito User Pool]
-        BedrockAgent[🤖 Bedrock Agent<br/>GraphRAG Capabilities]
-        SSM[📋 Systems Manager<br/>Parameter Store<br/>+ Neptune Config]
-        CloudWatch[📊 CloudWatch Logs]
-        ECR[📦 Elastic Container Registry<br/>- MCP Server Image<br/>- Gradio UI Image]
-        S3[🪣 S3 Bucket<br/>Terraform State<br/>+ Taxonomy Data]
+        SSM[📋 Systems Manager<br/>Parameter Store<br/>- MongoDB URI<br/>- ALB DNS<br/>- Cognito Config]
+        CloudWatch[📊 CloudWatch Logs<br/>- Event Streaming<br/>- Tool Usage<br/>- Reasoning Logs]
+        ECR[📦 Elastic Container Registry<br/>- Unified App Image<br/>- MCP Servers Image]
+        S3[🪣 S3 Bucket<br/>- Terraform State<br/>- Dataset Storage]
     end
     
     %% External AI Services
-    Bedrock[🧠 Amazon Bedrock<br/>Claude Models<br/>Cross-Region: us-east-1]
+    Bedrock[🧠 Amazon Bedrock<br/>Claude 3.5 Sonnet<br/>Region: ap-southeast-2]
     
     %% User Flow
     User --> ALB
-    ALB --> GradioTask
-    
-    %% Taxonomy Data Upload Flow
-    LocalDev --> NeptuneProxy
-    NeptuneProxy --> Neptune
+    ALB --> UnifiedTask
+    ALB --> MCPTask
     
     %% Internal Communication
-    GradioTask --> Cognito
-    GradioTask --> BedrockAgent
-    GradioTask --> SSM
-    
-    BedrockAgent --> Lambda
-    Lambda --> MCPTask
-    Lambda --> Neptune
+    UnifiedTask --> Cognito
+    UnifiedTask --> |HTTP/MCP Protocol| MCPTask
+    UnifiedTask --> Bedrock
+    UnifiedTask --> SSM
     
     MCPTask --> MongoDB
-    MCPTask --> Bedrock
+    MCPTask --> S3
     MCPTask --> SSM
     
-    %% GraphRAG Flow
-    BedrockAgent -.-> |Taxonomy Queries| Neptune
-    
     %% Logging
-    GradioTask --> CloudWatch
+    UnifiedTask --> CloudWatch
     MCPTask --> CloudWatch
-    Lambda --> CloudWatch
-    NeptuneProxy --> CloudWatch
     
     %% Container Registry
-    ECR --> GradioTask
+    ECR --> UnifiedTask
     ECR --> MCPTask
-    
-    %% State Management
-    S3 -.-> |Terraform State| VPC
     
     %% Styling
     classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
@@ -91,67 +71,109 @@ graph TB
     classDef external fill:#4CAF50,stroke:#fff,stroke-width:2px,color:#fff
     classDef storage fill:#8E44AD,stroke:#fff,stroke-width:2px,color:#fff
     
-    class ALB,Cognito,BedrockAgent,SSM,CloudWatch,Lambda,Bedrock,Neptune,NeptuneProxy aws
-    class GradioTask,MCPTask container
+    class ALB,Cognito,SSM,CloudWatch,Bedrock aws
+    class UnifiedTask,MCPTask container
     class User,MongoDB external
     class ECR,S3 storage
 ```
 
 ## Component Details
 
-### **Frontend Layer**
-- **Application Load Balancer**: Routes traffic to Gradio UI containers
-- **Gradio UI Container**: Web interface for user interaction
+### **Frontend & Application Layer**
+- **Application Load Balancer**: Multi-port routing
+  - Port 80: Gradio UI traffic
+  - Port 8000: MongoDB MCP server
+  - Port 8001: S3 MCP server
+- **Unified App Container**: Single container with integrated components
+  - Gradio UI for web interface
+  - Strands Agent for AI orchestration
+  - BedrockModel for Claude 3.5 Sonnet integration
+  - Real-time streaming responses
+  - Event logging (lifecycle, tools, reasoning)
 
-### **Application Layer**
-- **MCP Server Container**: Single container running multiple MCP servers:
-  - Custom MongoDB MCP (Port 8000)
-  - External MongoDB MCP (Port 8001)
-  - AWS MCP for service interactions
-  - Sequential Thinking MCP for complex reasoning
+### **MCP Layer**
+- **MCP Servers Container**: Dual MCP server deployment
+  - **MongoDB MCP** (Port 8000): Official @mongodb-js/mongodb-mcp-server
+    - Tools: find, aggregate, count, list-collections, list-databases, connect
+  - **S3 Presigned URL MCP** (Port 8001): Custom Node.js server
+    - Tool: generate_presigned_url for dataset downloads
+  - **Health Check** (Port 8002): Container health monitoring
 
 ### **AI/ML Layer**
-- **Bedrock Agent**: Orchestrates AI interactions with GraphRAG capabilities
-- **Lambda Function**: Handles Bedrock agent requests + Neptune graph queries
-- **Amazon Bedrock**: Claude models for AI processing (cross-region)
-- **Neptune Serverless**: Graph database for taxonomy relationships
-- **Neptune Proxy Lambda**: Public endpoint for graph data ingestion
+- **Strands Agent**: Embedded in unified app
+  - Direct MCP client integration via HTTP
+  - Async streaming with event processing
+  - Tool orchestration and reasoning
+- **Amazon Bedrock**: Claude 3.5 Sonnet (ap-southeast-2)
+  - Real-time text generation
+  - Tool use capabilities
+  - Reasoning support
 
 ### **Data Layer**
-- **MongoDB Atlas**: External database for DTIS observations
-- **Neptune Serverless**: Graph database for taxonomy hierarchy
-- **SSM Parameter Store**: Configuration management + Neptune endpoints
-- **S3**: Terraform state storage + taxonomy data
+- **MongoDB Atlas**: External database for metadata
+- **SSM Parameter Store**: Configuration management
+  - MongoDB URI (encrypted)
+  - ALB DNS name
+  - Cognito credentials
+  - AWS region settings
+- **S3**: Dataset storage and Terraform state
 
 ### **Security & Networking**
 - **VPC**: Isolated network environment
-- **Private Subnets**: Application containers
-- **Public Subnets**: Load balancer and NAT gateway
-- **Cognito**: User authentication
-- **IAM Roles**: Service permissions
+- **Private Subnets**: ECS containers (no public IPs)
+- **Public Subnets**: ALB and NAT gateway
+- **Security Groups**:
+  - ALB: Ports 80, 8000, 8001 from internet
+  - Unified App: Port 7860 from ALB
+  - MCP Servers: Ports 8000, 8001, 8002 from ALB and Unified App
+- **Cognito**: User authentication with JWT tokens
+- **IAM Roles**: ECS task execution and task roles
 
-### **DevOps**
-- **ECR**: Container image registry
-- **CloudWatch**: Centralized logging
+### **DevOps & Monitoring**
+- **ECR**: Container image registry (2 images)
+- **CloudWatch Logs**: Comprehensive logging
+  - Event loop lifecycle
+  - Tool usage with complete inputs
+  - Reasoning process
+  - MCP session management
+  - HTTP requests
 - **ECS Fargate**: Serverless container orchestration
+- **Health Checks**: ALB monitors port 8002 for MCP servers
 
 ## Key Features
 
-1. **Containerized Architecture**: All applications run in Docker containers
+1. **Unified Architecture**: Single container with Gradio + Strands Agent
 2. **Serverless Compute**: ECS Fargate eliminates server management
-3. **GraphRAG Integration**: Neptune Serverless for taxonomy knowledge graphs
-4. **Cross-Region AI**: Bedrock models accessible from different regions
-5. **Hybrid Data Access**: MongoDB for observations + Neptune for taxonomy
-6. **External Data Ingestion**: Public Lambda proxy for graph data upload
+3. **Real-time Streaming**: Async generator for live response updates
+4. **Cloud-based MCP**: HTTP-based MCP servers in separate ECS service
+5. **Official MongoDB MCP**: Using @mongodb-js/mongodb-mcp-server package
+6. **Comprehensive Logging**: Event streaming with lifecycle, tools, and reasoning
 7. **Centralized Configuration**: SSM Parameter Store for all settings
 8. **Infrastructure as Code**: Terraform manages all resources
-9. **Secure Networking**: Private subnets with controlled access
-10. **Scalable Design**: Auto-scaling containers based on demand
+9. **Secure Networking**: Private subnets with ALB frontend
+10. **Scalable Design**: Independent scaling for app and MCP servers
 
-## GraphRAG Workflow
+## Data Flow
 
-1. **Data Upload**: Local machine uploads taxonomy JSON via Neptune Proxy Lambda
-2. **Graph Building**: Proxy Lambda creates nodes and relationships in Neptune
-3. **Query Processing**: Bedrock Agent automatically routes taxonomy queries to Neptune
-4. **Graph Traversal**: Lambda executes Gremlin queries for parent/child relationships
-5. **Response Generation**: Agent combines graph data with AI responses
+1. **User Authentication**: Cognito JWT token validation
+2. **Query Submission**: User sends message via Gradio UI
+3. **Agent Initialization**: Strands Agent loads MCP tools on first use
+4. **MCP Session**: HTTP connection to MCP servers via ALB
+5. **Tool Execution**: Agent calls MongoDB/S3 tools as needed
+6. **Streaming Response**: Real-time text generation to UI
+7. **Event Logging**: CloudWatch captures all events
+8. **Session Cleanup**: MCP client closes after response
+
+## Deployment
+
+### Build & Deploy Scripts
+- `build_and_deploy.sh`: Deploy unified app to ECS
+- `build_gradio_ui.sh`: Build and push unified app image
+- `build_mcp_server.sh`: Build and push MCP servers image
+- `deploy_gradio_ui.sh`: Update unified app ECS service
+
+### Infrastructure
+- **Terraform**: Manages VPC, ECS, ALB, Cognito, SSM
+- **ECR Repositories**: Separate repos for app and MCP servers
+- **ECS Services**: Independent services with auto-scaling
+- **ALB Target Groups**: Health checks on ports 7860 and 8002

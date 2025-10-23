@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build and deploy Gradio UI container to ECR
+# Build and deploy unified app container to ECR
 # Usage: ./deploy_gradio_ui.sh <aws-region> <ecr-repo-url>
 
 AWS_REGION=$1
@@ -14,15 +14,15 @@ fi
 echo "Logging in to ECR..."
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REPO_URL"
 
-echo "Building Gradio UI container..."
-cd "$(dirname "$0")/../src/gradio_ui"
+echo "Building unified app container..."
+cd "$(dirname "$0")/../src/unified_app"
 docker build -t "$ECR_REPO_URL:latest" .
 
 echo "Pushing container to ECR..."
 docker push "$ECR_REPO_URL:latest"
 
 echo "Updating ECS service..."
-CLUSTER_NAME=$(aws ecs list-clusters --region "$AWS_REGION" --query "clusterArns[?contains(@, 'gradio')]" --output text | awk -F'/' '{print $2}')
+CLUSTER_NAME=$(aws ecs list-clusters --region "$AWS_REGION" --query "clusterArns[?contains(@, 'datahub')]" --output text | awk -F'/' '{print $2}')
 SERVICE_NAME=$(aws ecs list-services --cluster "$CLUSTER_NAME" --region "$AWS_REGION" --query "serviceArns[0]" --output text | awk -F'/' '{print $3}')
 
 aws ecs update-service --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --force-new-deployment --region "$AWS_REGION"

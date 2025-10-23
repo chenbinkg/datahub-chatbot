@@ -1,0 +1,9 @@
+gradio
+boto3
+pymongo
+requests
+beautifulsoup4
+mcp
+strands-agents
+botocore
+python-jose[cryptography]

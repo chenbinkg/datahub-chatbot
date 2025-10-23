@@ -24,4 +24,6 @@ success.txt
 sync_logs.txt
 plan.txt
 **/report.xml
-infrastructure/2-seafloor-data/*.py
+**/src/mcp_servers/temp-check/
+**/src/mcp_servers/temp-check*
+

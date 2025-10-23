@@ -12,7 +12,7 @@
 ```bash
 cd infra/2-chatbot-interface
 export PROJECT_CODE=FPEI2606
-export PROJECT_NAME=data-platform-mcp
+export PROJECT_NAME=datahub-mcp
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"
@@ -97,8 +97,8 @@ aws ecs update-service --cluster <cluster-name> --service <gradio-service-name> 
 For example, for gradio-ui ECS service in dev environment, restart the service like this:
 ```bash
 aws ecs update-service \
-  --cluster data-platform-mcp-dev-cluster \
-  --service data-platform-mcp-dev-gradio-ui \
+  --cluster datahub-mcp-dev-cluster \
+  --service datahub-mcp-dev-gradio-ui \
   --force-new-deployment \
   --desired-count 1 \
   --region ap-southeast-2 \
@@ -108,8 +108,8 @@ aws ecs update-service \
 For mcp-server ECS service in dev environment, restart the service like this:
 ```bash
 aws ecs update-service \
-  --cluster data-platform-mcp-dev-cluster \
-  --service data-platform-mcp-dev-mcp-server \
+  --cluster datahub-mcp-dev-cluster \
+  --service datahub-mcp-dev-mcp-server \
   --force-new-deployment \
   --desired-count 1 \
   --region ap-southeast-2 \
@@ -119,8 +119,8 @@ aws ecs update-service \
 sleep 30
 
 aws ecs update-service \
-  --cluster data-platform-mcp-dev-cluster \
-  --service data-platform-mcp-dev-mcp-server \
+  --cluster datahub-mcp-dev-cluster \
+  --service datahub-mcp-dev-mcp-server \
   --force-new-deployment \
   --desired-count 1 \
   --region ap-southeast-2 \
@@ -131,16 +131,16 @@ aws ecs update-service \
 Double check that the ECS services have been trimed down to 1 for each of the above.
 ```bash
 aws ecs describe-services \
-  --cluster data-platform-mcp-dev-cluster \
-  --services data-platform-mcp-dev-gradio-ui \
+  --cluster datahub-mcp-dev-cluster \
+  --services datahub-mcp-dev-gradio-ui \
   --region ap-southeast-2 \
   --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Deployment:deployments[0].status}'
 ```
 
 ```bash
 aws ecs describe-services \
-  --cluster data-platform-mcp-dev-cluster \
-  --services data-platform-mcp-dev-mcp-server \
+  --cluster datahub-mcp-dev-cluster \
+  --services datahub-mcp-dev-mcp-server \
   --region ap-southeast-2 \
   --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Deployment:deployments[0].status}'
 ```
@@ -269,16 +269,16 @@ docker-compose up
 1. **Check ECS service status**:
 ```bash
 aws ecs describe-services \
-  --cluster data-platform-mcp-dev-cluster \
-  --services data-platform-mcp-dev-gradio-ui \
+  --cluster datahub-mcp-dev-cluster \
+  --services datahub-mcp-dev-gradio-ui \
   --region ap-southeast-2 \
   --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Deployment:deployments[0].status}'
 ```
 
 ```bash
 aws ecs describe-services \
-  --cluster data-platform-mcp-dev-cluster \
-  --services data-platform-mcp-dev-mcp-server \
+  --cluster datahub-mcp-dev-cluster \
+  --services datahub-mcp-dev-mcp-server \
   --region ap-southeast-2 \
   --query 'services[0].{Status:status,Running:runningCount,Desired:desiredCount,Deployment:deployments[0].status}'
 ```
@@ -319,22 +319,22 @@ aws cognito-idp admin-set-user-password \
 ```bash
 # Check if multiple Gradio UI tasks are running (causes session issues)
 aws ecs describe-services \
-  --cluster data-platform-mcp-dev-cluster \
-  --services data-platform-mcp-dev-gradio-ui \
+  --cluster datahub-mcp-dev-cluster \
+  --services datahub-mcp-dev-gradio-ui \
   --region ap-southeast-2 \
   --query 'services[0].{Running:runningCount,Desired:desiredCount}'
 
 # If Running > 1, scale down to 1 task
 aws ecs update-service \
-  --cluster data-platform-mcp-dev-cluster \
-  --service data-platform-mcp-dev-gradio-ui \
+  --cluster datahub-mcp-dev-cluster \
+  --service datahub-mcp-dev-gradio-ui \
   --force-new-deployment \
   --desired-count 1 \
   --region ap-southeast-2
 
 # Check ALB target health
 aws elbv2 describe-target-health \
-  --target-group-arn $(aws elbv2 describe-target-groups --names data-platform-mcp-dev-tg --query 'TargetGroups[0].TargetGroupArn' --output text) \
+  --target-group-arn $(aws elbv2 describe-target-groups --names datahub-mcp-dev-tg --query 'TargetGroups[0].TargetGroupArn' --output text) \
   --region ap-southeast-2
 
 # Clear browser cache and cookies, then try again
@@ -344,11 +344,11 @@ aws elbv2 describe-target-health \
 6. **Login Returns "False" Status**:
 ```bash
 # Check Gradio UI container logs for authentication errors
-aws logs tail /ecs/data-platform-mcp-dev-gradio-ui --follow --region ap-southeast-2
+aws logs tail /ecs/datahub-mcp-dev-gradio-ui --follow --region ap-southeast-2
 
 # Verify Cognito configuration in SSM parameters
 aws ssm get-parameters \
-  --names "/remote-mcp-server/cognito-user-pool-id" "/remote-mcp-server/cognito-client-id" \
+  --names "/datahub-mcp/cognito-user-pool-id" "/datahub-mcp/cognito-client-id" \
   --region ap-southeast-2
 
 # Check if Cognito client has secret configured (this causes the issue)
@@ -372,7 +372,7 @@ aws cognito-idp admin-get-user \
 ```bash
 # This is a Gradio chatbot format issue
 # Check Gradio UI logs for the specific error
-aws logs tail /ecs/data-platform-mcp-dev-gradio-ui --follow --region ap-southeast-2
+aws logs tail /ecs/datahub-mcp-dev-gradio-ui --follow --region ap-southeast-2
 
 # The error occurs when chat responses don't match expected format
 # Each message should be [user_message, bot_response] format
@@ -385,7 +385,7 @@ aws logs tail /ecs/data-platform-mcp-dev-gradio-ui --follow --region ap-southeas
 # This means custom parameters can't be passed in sessionState
 # The mcp_type should be included in the input text instead
 # Check Gradio UI logs for Bedrock agent errors
-aws logs tail /ecs/data-platform-mcp-dev-gradio-ui --follow --region ap-southeast-2
+aws logs tail /ecs/datahub-mcp-dev-gradio-ui --follow --region ap-southeast-2
 ```
 
 9. **Bedrock Agent ID/Alias Validation Error**:
@@ -393,7 +393,7 @@ aws logs tail /ecs/data-platform-mcp-dev-gradio-ui --follow --region ap-southeas
 # Error: agentAliasId validation failed (length/pattern)
 # Check if SSM parameters contain correct values
 aws ssm get-parameters \
-  --names "/remote-mcp-server/bedrock-agent-id" "/remote-mcp-server/bedrock-agent-alias-id" \
+  --names "/datahub-mcp/bedrock-agent-id" "/datahub-mcp/bedrock-agent-alias-id" \
   --region ap-southeast-2
 
 # Get correct values from Terraform outputs
@@ -403,14 +403,14 @@ terraform output bedrock_agent_alias_id
 
 # Update SSM parameters if needed
 aws ssm put-parameter \
-  --name "/remote-mcp-server/bedrock-agent-id" \
+  --name "/datahub-mcp/bedrock-agent-id" \
   --value "$(terraform output -raw bedrock_agent_id)" \
   --type "String" \
   --overwrite \
   --region ap-southeast-2
 
 aws ssm put-parameter \
-  --name "/remote-mcp-server/bedrock-agent-alias-id" \
+  --name "/datahub-mcp/bedrock-agent-alias-id" \
   --value "$(terraform output -raw bedrock_agent_alias_id)" \
   --type "String" \
   --overwrite \
@@ -441,7 +441,7 @@ aws bedrock-agent-runtime retrieve \
 ```bash
 # Error: Node.js version too old or missing Python modules
 # Check MCP server logs
-aws logs tail /ecs/data-platform-mcp-dev-mcp-server --follow --region ap-southeast-2
+aws logs tail /ecs/datahub-mcp-dev-mcp-server --follow --region ap-southeast-2
 
 # The MCP server Dockerfile needs:
 # - Node.js 20 (not 18) for MongoDB MCP server
@@ -453,14 +453,14 @@ cd scripts
 
 # Update SSM parameters if needed
 aws ssm put-parameter \
-  --name "/remote-mcp-server/bedrock-agent-id" \
+  --name "/datahub-mcp/bedrock-agent-id" \
   --value "$(terraform output -raw bedrock_agent_id)" \
   --type "String" \
   --overwrite \
   --region ap-southeast-2
 
 aws ssm put-parameter \
-  --name "/remote-mcp-server/bedrock-agent-alias-id" \
+  --name "/datahub-mcp/bedrock-agent-alias-id" \
   --value "$(terraform output -raw bedrock_agent_alias_id)" \
   --type "String" \
   --overwrite \

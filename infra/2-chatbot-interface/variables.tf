@@ -1,6 +1,6 @@
 variable "project_name" {
   type = string
-  default = "data-platform-mcp"
+  default = "datahub-mcp"
 }
 
 variable "project_id" {
@@ -25,7 +25,7 @@ variable "service_category" {
 
 variable "authors" {
   type = string
-  default = "Bryce Chen/Maxime Rio"
+  default = "Bryce Chen"
 }
 
 variable "aws_region" {
@@ -35,7 +35,7 @@ variable "aws_region" {
 
 variable "vpc_cidr" {
   type    = string
-  default = "10.0.0.0/16"
+  default = "10.1.0.0/16"
 }
 
 variable "availability_zones" {
@@ -45,12 +45,12 @@ variable "availability_zones" {
 
 variable "private_subnets" {
   type    = list(string)
-  default = ["10.0.1.0/24", "10.0.2.0/24"]
+  default = ["10.1.1.0/24", "10.1.2.0/24"]
 }
 
 variable "public_subnets" {
   type    = list(string)
-  default = ["10.0.101.0/24", "10.0.102.0/24"]
+  default = ["10.1.101.0/24", "10.1.102.0/24"]
 }
 
 variable "ssh_allowed_cidr" {
@@ -108,7 +108,7 @@ variable "mongo_uri" {
 variable "mongo_db" {
   type        = string
   description = "MongoDB database name"
-  default     = "data_platform"
+  default     = "data_hub"
 }
 
 variable "sagemaker_vpc_cidr" {

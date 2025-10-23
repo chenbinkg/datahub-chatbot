@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Unified MCP server container (MongoDB + S3)
+  mcp-servers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # MongoDB MCP
+      - "8001:8001"  # S3 Presigned URL MCP
+      - "8002:8002"  # Health check
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - AWS_REGION=${AWS_REGION:-ap-southeast-2}
+    restart: unless-stopped
+
+  # Legacy separate containers (no longer needed)
+  # mongodb-mcp:
+  #   image: mongodb/mongodb-mcp-server:latest
+  #   ports:
+  #     - "8000:3000"
+  #   environment:
+  #     - MDB_MCP_CONNECTION_STRING=${MONGO_URI}
+  #     - MDB_MCP_READ_ONLY=true
+  #   command: ["npx", "mongodb-mcp-server@latest", "--transport", "http", "--httpHost=0.0.0.0", "--httpPort=3000"]
+  #   restart: unless-stopped
+
+  # web-scraping-mcp:
+  #   build: ./web-scraping
+  #   ports:
+  #     - "8002:3000"
+  #   restart: unless-stopped
+
+  # shopify-mcp:
+  #   build: ./shopify
+  #   ports:
+  #     - "8003:3000"
+  #   restart: unless-stopped

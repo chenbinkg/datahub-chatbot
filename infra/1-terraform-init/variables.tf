@@ -1,6 +1,6 @@
 variable "project_name" {
   type = string
-  default = "data-platform-mcp"
+  default = "datahub-mcp"
 }
 
 variable "project_id" {
@@ -25,5 +25,5 @@ variable "service_category" {
 
 variable "authors" {
   type = string
-  default = "Bryce Chen/Maxime Rio"
+  default = "Bryce Chen"
 }

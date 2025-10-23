@@ -48,7 +48,7 @@ function_name="mcp_agent" path_cwd="$PWD/lambda" runtime="python3" bash lambda/s
 cd infra/2-chatbot-interface
 source .env.dev
 export PROJECT_CODE=FPEI2606
-export PROJECT_NAME=data-platform-mcp
+export PROJECT_NAME=datahub-mcp
 export ENVIRONMENT=dev
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init -backend-config="bucket=${PROJECT_NAME}-${ENVIRONMENT}-${AWS_ACCOUNT_ID}-terraform-state" -backend-config="key=${PROJECT_CODE}/${PROJECT_NAME}/${ENVIRONMENT}.tfstate"
@@ -101,7 +101,7 @@ The agent ID and alias ID are automatically stored in SSM Parameter Store for us
 
 ## Configuration Management
 
-This infrastructure uses AWS Systems Manager Parameter Store for configuration management. All configuration parameters are stored in SSM under the `/remote-mcp-server/` prefix. This approach provides several benefits:
+This infrastructure uses AWS Systems Manager Parameter Store for configuration management. All configuration parameters are stored in SSM under the `/datahub-mcp/` prefix. This approach provides several benefits:
 
 1. Secure storage of sensitive information like database credentials
 2. Centralized configuration management
@@ -110,15 +110,15 @@ This infrastructure uses AWS Systems Manager Parameter Store for configuration m
 
 The following parameters are managed by Terraform:
 
-- `/remote-mcp-server/aws-region`
-- `/remote-mcp-server/mcp-server-url`
-- `/remote-mcp-server/mongodb-mcp-server-url`
-- `/remote-mcp-server/cognito-user-pool-id`
-- `/remote-mcp-server/cognito-client-id`
-- `/remote-mcp-server/mongo-uri`
-- `/remote-mcp-server/mongo-db`
-- `/remote-mcp-server/bedrock-agent-id`
-- `/remote-mcp-server/bedrock-agent-alias-id`
+- `/datahub-mcp/aws-region`
+- `/datahub-mcp/mcp-server-url`
+- `/datahub-mcp/mongodb-mcp-server-url`
+- `/datahub-mcp/cognito-user-pool-id`
+- `/datahub-mcp/cognito-client-id`
+- `/datahub-mcp/mongo-uri`
+- `/datahub-mcp/mongo-db`
+- `/datahub-mcp/bedrock-agent-id`
+- `/datahub-mcp/bedrock-agent-alias-id`
 
 You can set these parameters when planning the Terraform configuration:
 

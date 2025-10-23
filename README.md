@@ -13,5 +13,4 @@ Remote MCP Server for Data Platform project with GraphRAG taxonomy knowledge bas
 
 - [infra](infra/) - contains Terraform code that manages AWS resources (e.g. Amazon S3 buckets)
 - [scripts](scripts/) - contains scripts
-- [notebooks](notebooks/) - contains jupyter notebooks for testing
-- [dtis_ontology](dtis_ontology/) - contains DTIS taxonomy data for knowledge base
+- [src](src/) - source code for mcp server and gradio ui ECS container set-up 
